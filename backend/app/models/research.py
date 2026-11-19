@@ -26,7 +26,12 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship, synonym
 
 from app.core.embedding import EMBEDDING_DIMENSION, EMBEDDING_MODEL
 from app.database.base import Base
-from app.models.enums import RetrievalStatus, SourceVersionType, enum_column
+from app.models.enums import (
+    EvidenceContentType,
+    RetrievalStatus,
+    SourceVersionType,
+    enum_column,
+)
 from app.models.mixins import TimestampMixin, UUIDPrimaryKey
 
 
@@ -153,6 +158,12 @@ class EvidencePassage(Base, UUIDPrimaryKey, TimestampMixin):
             "passage_index",
             name="uq_evidence_passages_version_index",
         ),
+        UniqueConstraint(
+            "source_version_id",
+            "passage_index",
+            "claim_id",
+            name="uq_evidence_passages_claim_location",
+        ),
         Index("ix_evidence_passages_source_id", "source_id"),
         Index(
             "ix_evidence_passages_version_section",
@@ -168,6 +179,10 @@ class EvidencePassage(Base, UUIDPrimaryKey, TimestampMixin):
     )
 
     source_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    claim_id: Mapped[UUID | None] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("claims.id", ondelete="CASCADE"),
+    )
     source_version_id: Mapped[UUID] = mapped_column(
         Uuid(as_uuid=True), nullable=False
     )
@@ -179,6 +194,17 @@ class EvidencePassage(Base, UUIDPrimaryKey, TimestampMixin):
     page_number: Mapped[int | None] = mapped_column(Integer)
     location: Mapped[str | None] = mapped_column(String(500))
     relevance_score: Mapped[float | None] = mapped_column(Float)
+    paragraph_number: Mapped[int | None] = mapped_column(Integer)
+    content_type: Mapped[EvidenceContentType] = mapped_column(
+        enum_column(EvidenceContentType, "evidence_content_type"),
+        nullable=False,
+        default=EvidenceContentType.FULL_TEXT,
+        server_default=text("'full_text'"),
+    )
+    extraction_method: Mapped[str | None] = mapped_column(String(120))
+    source_url: Mapped[str | None] = mapped_column(String(2048))
+    doi: Mapped[str | None] = mapped_column(String(255))
+    passage_hash: Mapped[str | None] = mapped_column(String(64))
 
     source: Mapped[ResearchSource] = relationship(
         secondary="source_versions",
@@ -211,10 +237,15 @@ class Embedding(Base, UUIDPrimaryKey, TimestampMixin):
         ),
     )
 
-    evidence_passage_id: Mapped[UUID] = mapped_column(
+    evidence_passage_id: Mapped[UUID | None] = mapped_column(
         Uuid(as_uuid=True),
         ForeignKey("evidence_passages.id", ondelete="CASCADE"),
         nullable=False,
+        unique=True,
+    )
+    claim_id: Mapped[UUID | None] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("claims.id", ondelete="CASCADE"),
         unique=True,
     )
     vector: Mapped[list[float]] = mapped_column(
