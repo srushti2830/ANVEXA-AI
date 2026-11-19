@@ -64,6 +64,9 @@ class ResearchSource(Base, UUIDPrimaryKey, TimestampMixin):
         back_populates="source",
         cascade="all, delete-orphan",
     )
+    citations: Mapped[list[Citation]] = relationship(
+        back_populates="research_source"
+    )
     reference_issues: Mapped[list[ReferenceIssue]] = relationship(
         back_populates="source"
     )

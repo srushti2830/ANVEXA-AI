@@ -206,12 +206,17 @@ class Citation(Base, UUIDPrimaryKey, TimestampMixin):
     __table_args__ = (
         Index("ix_citations_version", "document_version_id"),
         Index("ix_citations_doi", "doi"),
+        Index("ix_citations_research_source", "research_source_id"),
     )
 
     document_version_id: Mapped[UUID] = mapped_column(
         Uuid(as_uuid=True),
         ForeignKey("document_versions.id", ondelete="CASCADE"),
         nullable=False,
+    )
+    research_source_id: Mapped[UUID | None] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("research_sources.id", ondelete="SET NULL"),
     )
     label: Mapped[str | None] = mapped_column(String(120))
     style: Mapped[CitationStyle] = mapped_column(
@@ -235,6 +240,9 @@ class Citation(Base, UUIDPrimaryKey, TimestampMixin):
     )
 
     document_version: Mapped[DocumentVersion] = relationship(back_populates="citations")
+    research_source: Mapped[ResearchSource | None] = relationship(
+        back_populates="citations"
+    )
     claim_links: Mapped[list[ClaimCitation]] = relationship(
         back_populates="citation",
         cascade="all, delete-orphan",
