@@ -13,7 +13,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     op.drop_constraint(
-        "ck_reports_format_report_format",
+        "report_format",
         "reports",
         type_="check",
     )
@@ -31,7 +31,7 @@ def downgrade() -> None:
         type_="check",
     )
     op.create_check_constraint(
-        "ck_reports_format_report_format",
+        "report_format",
         "reports",
         "format IN ('pdf', 'csv')",
     )
