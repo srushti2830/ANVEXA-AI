@@ -64,7 +64,7 @@ def validate_file_extension(filename: str, allowed: list[str]) -> str:
     ext = ext.lower()
     if ext not in allowed:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=422,
             detail=f"Unsupported file type '{ext}'. Allowed: {', '.join(allowed)}",
         )
     return ext
@@ -74,20 +74,20 @@ def validate_file_content(data: bytes, extension: str) -> None:
     """Validate file magic bytes match the claimed extension."""
     if not data:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=422,
             detail="Uploaded file is empty",
         )
 
     if extension == ".pdf":
         if not data[:4].startswith(PDF_MAGIC):
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=422,
                 detail="File content does not match PDF format",
             )
     elif extension == ".docx":
         if not data[:4].startswith(ZIP_MAGIC):
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=422,
                 detail="File content does not match DOCX format",
             )
 
@@ -97,7 +97,7 @@ def validate_file_size(size: int, max_size: int) -> None:
     if size > max_size:
         max_mb = max_size / (1024 * 1024)
         raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            status_code=413,
             detail=f"File size ({size} bytes) exceeds maximum allowed ({max_mb:.0f} MB)",
         )
 
