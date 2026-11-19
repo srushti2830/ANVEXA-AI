@@ -116,6 +116,7 @@ def upgrade() -> None:
     )
     op.create_table('citations',
     sa.Column('document_version_id', sa.Uuid(), nullable=False),
+    sa.Column('research_source_id', sa.Uuid(), nullable=True),
     sa.Column('label', sa.String(length=120), nullable=True),
     sa.Column('style', sa.Enum('numeric', 'author_year', 'superscript', 'unknown', name='citation_style', native_enum=False, create_constraint=True), server_default=sa.text("'unknown'"), nullable=False),
     sa.Column('raw_text', sa.Text(), nullable=False),
@@ -130,6 +131,7 @@ def upgrade() -> None:
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.ForeignKeyConstraint(['document_version_id'], ['document_versions.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['research_source_id'], ['research_sources.id'], ondelete='SET NULL'),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('document_pages',
@@ -315,6 +317,7 @@ def upgrade() -> None:
     op.create_index('ix_source_versions_source_published', 'source_versions', ['source_id', 'published_at'], unique=False)
     op.create_index('ix_evidence_passages_version_section', 'evidence_passages', ['source_version_id', 'section'], unique=False)
     op.create_index('ix_citations_doi', 'citations', ['doi'], unique=False)
+    op.create_index('ix_citations_research_source', 'citations', ['research_source_id'], unique=False)
     op.create_index('ix_citations_version', 'citations', ['document_version_id'], unique=False)
     op.create_index('ix_embeddings_vector_hnsw', 'embeddings', ['vector'], unique=False, postgresql_using='hnsw', postgresql_with={'m': 16, 'ef_construction': 64}, postgresql_ops={'vector': 'vector_cosine_ops'})
     op.create_index('ix_processing_jobs_status_created', 'processing_jobs', ['status', 'created_at'], unique=False)
