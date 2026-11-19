@@ -250,7 +250,7 @@ def _make_academic_docx() -> bytes:
 def _make_unicode_docx() -> bytes:
     """Create a DOCX with Unicode characters."""
     doc = DocxDocument()
-    doc.add_paragraph("Ünîcödé Têst — em-dash, "smart quotes", ellipsis…")
+    doc.add_paragraph("Ünîcödé Têst \u2014 em-dash, \u201csmart quotes\u201d, ellipsis\u2026")
     doc.add_paragraph("中文文本测试 • Japanese: テスト • Arabic: اختبار")
     doc.add_paragraph("Maths: α + β = γ, ∑(xᵢ), √2 ≈ 1.414")
     buf = io.BytesIO()
