@@ -194,7 +194,11 @@ def get_review_detail(
     _ensure_reviewer(reviewer)
     result = _get_review_result(review_id, db)
     claim, document = _claim_document(result, db)
-    verify_resource_ownership(document.user_id, reviewer)
+    verify_resource_ownership(
+        document.user_id,
+        reviewer,
+        allow_roles=(UserRole.REVIEWER, UserRole.ADMIN),
+    )
     return {
         "review_id": result.id,
         "verification_result_id": result.id,
