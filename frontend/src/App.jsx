@@ -555,6 +555,63 @@ function Settings() {
   );
 }
 
+function SourcesExplorer() {
+  const [documents, setDocuments] = useState([]);
+  const [sources, setSources] = useState([]);
+  const [citations, setCitations] = useState([]);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    api.get("/documents", { params: { page: 1, per_page: 100 } })
+      .then(async (response) => {
+        setDocuments(response.data.documents || []);
+        const foundSources = [];
+        const foundCitations = [];
+        for (const document of response.data.documents || []) {
+          const [sourceResponse, citationResponse] = await Promise.allSettled([
+            api.get(`/documents/${document.id}/sources`, { params: { page: 1, per_page: 100 } }),
+            api.get(`/documents/${document.id}/citations`, { params: { page: 1, per_page: 100 } }),
+          ]);
+          if (sourceResponse.status === "fulfilled") foundSources.push(...(sourceResponse.value.data.sources || []).map((item) => ({ ...item, document_id: document.id })));
+          if (citationResponse.status === "fulfilled") foundCitations.push(...(citationResponse.value.data.citations || []).map((item) => ({ ...item, document_id: document.id })));
+        }
+        setSources(foundSources);
+        setCitations(foundCitations);
+      })
+      .catch((err) => setError(errorMessage(err)));
+  }, []);
+  return (
+    <>
+      <PageHeader eyebrow="Traceability" title="Citation and source explorer" />
+      <ErrorBox error={error} />
+      <div className="workspace-grid">
+        <section className="panel">
+          <div className="panel-heading"><h2>Citations</h2><span>{citations.length} records</span></div>
+          {citations.length === 0 ? <Empty title="No citations" text="Run citation detection for uploaded documents." /> :
+            citations.map((citation) => (
+              <article className="evidence-card" key={`${citation.document_id}-${citation.id}`}>
+                <strong>{citation.original_marker || citation.citation_text}</strong>
+                <p>{citation.publication_title || "Publication title unavailable"}</p>
+                <footer>{citation.citation_type} · DOI {citation.doi || "unavailable"} · Page {citation.page_number || "—"}</footer>
+              </article>
+            ))}
+        </section>
+        <aside className="panel">
+          <div className="panel-heading"><h2>Retrieved sources</h2><span>{sources.length} records</span></div>
+          {sources.length === 0 ? <Empty title="No sources" text="Run source retrieval after citation detection." /> :
+            sources.map((source) => (
+              <article className="source-card" key={`${source.document_id}-${source.id}`}>
+                <h3>{source.title}</h3>
+                <p>{source.authors?.join(", ") || "Authors unavailable"}</p>
+                <p>{source.publication_year || "Year unavailable"} · {source.doi || "No DOI"}</p>
+                {source.source_url && <a href={source.source_url} target="_blank" rel="noreferrer">Open source</a>}
+              </article>
+            ))}
+        </aside>
+      </div>
+    </>
+  );
+}
+
 export default function App() {
   return (
     <Routes>
@@ -567,6 +624,7 @@ export default function App() {
       <Route path="/app/documents/:id" element={<Protected><Layout><DocumentDetail /></Layout></Protected>} />
       <Route path="/app/claims/:id" element={<Protected><Layout><ClaimWorkspace /></Layout></Protected>} />
       <Route path="/app/reviews" element={<Protected><Layout><Reviews /></Layout></Protected>} />
+      <Route path="/app/sources" element={<Protected><Layout><SourcesExplorer /></Layout></Protected>} />
       <Route path="/app/settings" element={<Protected><Layout><Settings /></Layout></Protected>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
