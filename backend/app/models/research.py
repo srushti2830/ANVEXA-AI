@@ -188,7 +188,6 @@ class EvidencePassage(Base, UUIDPrimaryKey, TimestampMixin):
     )
     passage_index: Mapped[int] = mapped_column(Integer, nullable=False)
     passage_text: Mapped[str] = mapped_column(Text, nullable=False)
-    text = synonym("passage_text")
     section_name: Mapped[str | None] = mapped_column(String(300))
     section = synonym("section_name")
     page_number: Mapped[int | None] = mapped_column(Integer)
@@ -205,6 +204,7 @@ class EvidencePassage(Base, UUIDPrimaryKey, TimestampMixin):
     source_url: Mapped[str | None] = mapped_column(String(2048))
     doi: Mapped[str | None] = mapped_column(String(255))
     passage_hash: Mapped[str | None] = mapped_column(String(64))
+    text = synonym("passage_text")
 
     source: Mapped[ResearchSource] = relationship(
         secondary="source_versions",
