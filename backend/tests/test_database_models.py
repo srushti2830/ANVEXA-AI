@@ -81,7 +81,7 @@ def test_embedding_dimension_matches_configured_model() -> None:
 
 def test_postgresql_engine_uses_postgresql_driver_without_connecting() -> None:
     engine = create_database_engine(
-        "postgresql+psycopg://test-user:test-password@localhost:5432/test-db"
+        "postgresql+pg8000://test-user:test-password@localhost:5432/test-db"
     )
     try:
         assert engine.dialect.name == "postgresql"
