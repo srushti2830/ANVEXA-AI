@@ -284,6 +284,12 @@ class Citation(Base, UUIDPrimaryKey, TimestampMixin):
         Index("ix_citations_version", "document_version_id"),
         Index("ix_citations_doi", "doi"),
         Index("ix_citations_research_source", "research_source_id"),
+        UniqueConstraint(
+            "document_version_id",
+            "normalized_marker",
+            "citation_text",
+            name="uq_citations_version_marker_text",
+        ),
         ForeignKeyConstraint(
             ["document_id", "document_version_id"],
             ["document_versions.document_id", "document_versions.id"],
@@ -309,13 +315,22 @@ class Citation(Base, UUIDPrimaryKey, TimestampMixin):
     style = synonym("citation_type")
     citation_text: Mapped[str] = mapped_column(Text, nullable=False)
     raw_text = synonym("citation_text")
+    original_marker: Mapped[str | None] = mapped_column(Text)
+    normalized_marker: Mapped[str | None] = mapped_column(String(500))
     publication_title: Mapped[str | None] = mapped_column(String(1000))
     title = synonym("publication_title")
     authors: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     publication_year: Mapped[int | None] = mapped_column(Integer)
     doi: Mapped[str | None] = mapped_column(String(255))
     url: Mapped[str | None] = mapped_column(String(2048))
+    journal_or_conference: Mapped[str | None] = mapped_column(String(1000))
+    venue = synonym("journal_or_conference")
+    volume: Mapped[str | None] = mapped_column(String(50))
+    issue: Mapped[str | None] = mapped_column(String(50))
+    page_range: Mapped[str | None] = mapped_column(String(100))
+    paragraph_number: Mapped[int | None] = mapped_column(Integer)
     page_number: Mapped[int | None] = mapped_column(Integer)
+    extraction_method: Mapped[str | None] = mapped_column(String(120))
     is_bibliography_entry: Mapped[bool] = mapped_column(
         Boolean,
         nullable=False,
@@ -349,6 +364,11 @@ class ClaimCitation(Base, UUIDPrimaryKey):
         ),
         Index("ix_claim_citations_claim", "claim_id"),
         Index("ix_claim_citations_citation", "citation_id"),
+        UniqueConstraint(
+            "claim_id",
+            "citation_id",
+            name="uq_claim_citations_claim_citation",
+        ),
     )
 
     claim_id: Mapped[UUID] = mapped_column(

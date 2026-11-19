@@ -75,7 +75,19 @@ class CitationStyle(str, Enum):
     NUMERIC = "numeric"
     AUTHOR_YEAR = "author_year"
     SUPERSCRIPT = "superscript"
+    APA = "apa"
+    IEEE = "ieee"
+    MLA = "mla"
+    VANCOUVER = "vancouver"
     UNKNOWN = "unknown"
+
+
+class CitationMappingStatus(str, Enum):
+    MATCHED = "matched"
+    UNMATCHED = "unmatched"
+    AMBIGUOUS = "ambiguous"
+    MULTIPLE_MATCHES = "multiple_matches"
+    MISSING_REFERENCE = "missing_reference"
 
 
 class SourceVersionType(str, Enum):
