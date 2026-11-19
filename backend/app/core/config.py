@@ -55,6 +55,10 @@ class Settings(BaseSettings):
     gemini_model: str = "gemini-2.0-flash"
     gemini_timeout_seconds: float = Field(default=20.0, ge=1.0, le=120.0)
     gemini_max_retries: int = Field(default=2, ge=0, le=5)
+    crossref_api_url: str = "https://api.crossref.org"
+    openalex_api_url: str = "https://api.openalex.org"
+    source_retrieval_timeout_seconds: float = Field(default=15.0, ge=1.0, le=120.0)
+    source_retrieval_max_retries: int = Field(default=2, ge=0, le=5)
 
     @field_validator("cors_origins", mode="before")
     @classmethod
