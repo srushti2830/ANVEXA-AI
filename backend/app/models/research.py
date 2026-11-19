@@ -266,3 +266,4 @@ class Embedding(Base, UUIDPrimaryKey, TimestampMixin):
     evidence_passage: Mapped[EvidencePassage] = relationship(
         back_populates="embedding"
     )
+    claim = relationship("Claim", foreign_keys=[claim_id])
