@@ -1,21 +1,19 @@
 from __future__ import annotations
 
-from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import (
     BigInteger,
     Boolean,
     CheckConstraint,
-    DateTime,
     ForeignKey,
     Index,
     Integer,
+    JSON,
     String,
     Text,
     Uuid,
     UniqueConstraint,
-    func,
     text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -244,3 +242,42 @@ class Citation(Base, UUIDPrimaryKey, TimestampMixin):
     reference_issues: Mapped[list[ReferenceIssue]] = relationship(
         back_populates="citation"
     )
+
+
+class ClaimCitation(Base, UUIDPrimaryKey):
+    __tablename__ = "claim_citations"
+    __table_args__ = (
+        CheckConstraint(
+            "page_number IS NULL OR page_number > 0",
+            name="ck_claim_citations_page_positive",
+        ),
+        CheckConstraint(
+            "character_offset IS NULL OR character_offset >= 0",
+            name="ck_claim_citations_offset_nonnegative",
+        ),
+        Index("ix_claim_citations_claim", "claim_id"),
+        Index("ix_claim_citations_citation", "citation_id"),
+    )
+
+    claim_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("claims.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    citation_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("citations.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    citation_text: Mapped[str] = mapped_column(Text, nullable=False)
+    page_number: Mapped[int | None] = mapped_column(Integer)
+    character_offset: Mapped[int | None] = mapped_column(Integer)
+    mapping_method: Mapped[str] = mapped_column(
+        String(80),
+        nullable=False,
+        default="explicit",
+        server_default=text("'explicit'"),
+    )
+
+    claim: Mapped[Claim] = relationship(back_populates="citation_links")
+    citation: Mapped[Citation] = relationship(back_populates="claim_links")
