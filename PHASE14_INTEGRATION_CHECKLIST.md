@@ -30,7 +30,8 @@
 
 ## Actual tests executed
 
-- Complete pytest suite: **185 passed**.
+- Complete pytest suite: **189 passed**.
+- HTTP integration/migration smoke subset: **7 passed**.
 - Focused migration tests: **3 passed**.
 - Frontend production build: passed.
 - Frontend preview/dev HTTP check: `200 OK`.
