@@ -47,6 +47,11 @@ class Settings(BaseSettings):
     auth_rate_limit_max_attempts: int = Field(default=5, ge=1)
     auth_rate_limit_lockout_seconds: int = Field(default=300, ge=1)
 
+    # Document Management
+    document_storage_path: str = "./storage/documents"
+    max_upload_size_bytes: int = Field(default=52_428_800, ge=1)  # 50 MB
+    allowed_file_extensions: list[str] = Field(default=[".pdf", ".docx"])
+
     @field_validator("cors_origins", mode="before")
     @classmethod
     def parse_cors_origins(cls, value: object) -> list[str]:

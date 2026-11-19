@@ -20,9 +20,18 @@ class UserRole(str, Enum):
 
 class DocumentStatus(str, Enum):
     UPLOADED = "uploaded"
+    VALIDATING = "validating"
+    QUEUED = "queued"
     PROCESSING = "processing"
-    READY = "ready"
+    COMPLETED = "completed"
     FAILED = "failed"
+
+    # Backward-compatible alias for the old "ready" value
+    @classmethod
+    def _missing_(cls, value: object):
+        if isinstance(value, str) and value.strip().lower() == "ready":
+            return cls.COMPLETED
+        return None
 
 
 class ExtractionStatus(str, Enum):
