@@ -234,3 +234,148 @@ function Dashboard() {
     </>
   );
 }
+
+function Documents() {
+  const [documents, setDocuments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [uploading, setUploading] = useState(false);
+  async function load() {
+    setLoading(true);
+    try {
+      const response = await api.get("/documents", { params: { page: 1, per_page: 50, sort_order: "desc" } });
+      setDocuments(response.data.documents || []);
+    } catch (err) { setError(errorMessage(err)); }
+    finally { setLoading(false); }
+  }
+  useEffect(() => { load(); }, []);
+  async function upload(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!/\.(pdf|docx)$/i.test(file.name)) {
+      setError("Only PDF and DOCX files are supported.");
+      return;
+    }
+    setUploading(true);
+    setError("");
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      await api.post("/documents/upload", form, { headers: { "Content-Type": "multipart/form-data" } });
+      await load();
+    } catch (err) { setError(errorMessage(err)); }
+    finally { setUploading(false); event.target.value = ""; }
+  }
+  return (
+    <>
+      <PageHeader eyebrow="Document library" title="Documents" actions={
+        <label className="button file-button">{uploading ? "Uploading..." : "Upload document"}<input type="file" accept=".pdf,.docx" onChange={upload} disabled={uploading} /></label>
+      } />
+      <ErrorBox error={error} />
+      {loading ? <Loading /> : documents.length === 0 ? <Empty title="No documents" text="Upload a PDF or DOCX academic document to begin." /> :
+        <div className="document-grid">
+          {documents.map((document) => (
+            <Link className="document-card" to={`/app/documents/${document.id}`} key={document.id}>
+              <div className="document-icon">PDF</div>
+              <div><h3>{document.filename}</h3><p>{document.file_type}</p><span className="status">{document.processing_status}</span></div>
+            </Link>
+          ))}
+        </div>}
+    </>
+  );
+}
+
+function DocumentDetail() {
+  const { id } = useParams();
+  const [document, setDocument] = useState(null);
+  const [claims, setClaims] = useState([]);
+  const [citations, setCitations] = useState([]);
+  const [sources, setSources] = useState([]);
+  const [report, setReport] = useState(null);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState("");
+  async function load() {
+    try {
+      const [documentResponse, claimResponse, citationResponse, sourceResponse, reportResponse] = await Promise.allSettled([
+        api.get(`/documents/${id}`),
+        api.get(`/documents/${id}/claims`, { params: { page: 1, per_page: 100 } }),
+        api.get(`/documents/${id}/citations`, { params: { page: 1, per_page: 100 } }),
+        api.get(`/documents/${id}/sources`, { params: { page: 1, per_page: 100 } }),
+        api.get(`/documents/${id}/report`),
+      ]);
+      if (documentResponse.status === "fulfilled") setDocument(documentResponse.value.data);
+      if (claimResponse.status === "fulfilled") setClaims(claimResponse.value.data.claims || []);
+      if (citationResponse.status === "fulfilled") setCitations(citationResponse.value.data.citations || []);
+      if (sourceResponse.status === "fulfilled") setSources(sourceResponse.value.data.sources || []);
+      if (reportResponse.status === "fulfilled") setReport(reportResponse.value.data);
+    } catch (err) { setError(errorMessage(err)); }
+  }
+  useEffect(() => { load(); }, [id]);
+  async function run(label, path, method = "post") {
+    setBusy(label);
+    setError("");
+    try {
+      await api[method](path);
+      await load();
+    } catch (err) { setError(errorMessage(err)); }
+    finally { setBusy(""); }
+  }
+  async function download(format) {
+    try {
+      const response = await api.get(`/documents/${id}/report/${format}`, { responseType: "blob" });
+      const blob = new Blob([response.data], { type: format === "pdf" ? "application/pdf" : "application/json" });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `document-${id}-report.${format}`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch (err) { setError(errorMessage(err)); }
+  }
+  if (!document) return <Loading />;
+  const workflow = [
+    ["Parse document", `/documents/${id}/parse`, "post"],
+    ["Extract claims", `/documents/${id}/extract-claims`, "post"],
+    ["Detect citations", `/documents/${id}/detect-citations`, "post"],
+    ["Retrieve sources", `/documents/${id}/retrieve-sources`, "post"],
+    ["Extract evidence", `/documents/${id}/extract-evidence`, "post"],
+    ["Verify claims", `/documents/${id}/verify`, "post"],
+    ["Classify verdicts", `/documents/${id}/classify-verdicts`, "post"],
+  ];
+  return (
+    <>
+      <PageHeader eyebrow="Document workspace" title={document.filename} actions={
+        <><button className="button secondary" onClick={() => download("json")}>JSON report</button><button className="button" onClick={() => download("pdf")}>PDF report</button></>
+      } />
+      <ErrorBox error={error} />
+      <div className="status-strip">
+        <span>Processing</span><strong>{document.processing_status}</strong>
+        <span>Claims</span><strong>{claims.length}</strong>
+        <span>Citations</span><strong>{citations.length}</strong>
+        <span>Sources</span><strong>{sources.length}</strong>
+      </div>
+      <section className="panel">
+        <div className="panel-heading"><h2>Verification workflow</h2></div>
+        <div className="workflow">
+          {workflow.map(([label, path]) => (
+            <button key={label} className="workflow-step" disabled={!!busy} onClick={() => run(label, path)}>
+              <span>{busy === label ? "Running..." : label}</span>
+            </button>
+          ))}
+        </div>
+      </section>
+      <section className="panel">
+        <div className="panel-heading"><h2>Claims</h2><span>{claims.length} records</span></div>
+        {claims.length === 0 ? <Empty title="No claims extracted" text="Run claim extraction after parsing this document." /> :
+          <div className="claim-list">
+            {claims.map((claim) => (
+              <Link className="claim-row" to={`/app/claims/${claim.id}`} key={claim.id}>
+                <div><strong>{claim.claim_text || claim.original_sentence}</strong><p>Page {claim.page_number || "—"} · {claim.section_heading || "Section unavailable"}</p></div>
+                <span className="status">{claim.claim_type}</span>
+              </Link>
+            ))}
+          </div>}
+      </section>
+    </>
+  );
+}
