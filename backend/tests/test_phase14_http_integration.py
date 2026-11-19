@@ -82,7 +82,7 @@ def test_registration_login_and_authenticated_me(http_app) -> None:
             "password": "Phase14Test!123",
         },
     )
-    assert register.status_code == 201
+    assert register.status_code == 201, register.text
 
     login = http_request(
         http_app,
