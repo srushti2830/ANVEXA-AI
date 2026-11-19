@@ -1,3 +1,12 @@
+import sys
+from pathlib import Path
+
+# Ensure the backend directory is on sys.path so ``app.*`` imports resolve
+# regardless of how alembic is invoked (from project root or backend/).
+_backend_dir = str(Path(__file__).resolve().parents[1])
+if _backend_dir not in sys.path:
+    sys.path.insert(0, _backend_dir)
+
 from logging.config import fileConfig
 
 from alembic import context
