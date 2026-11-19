@@ -247,6 +247,10 @@ def gemini_extract(located: list[LocatedSentence]) -> tuple[list[dict], str | No
             response.raise_for_status()
             data = response.json()
             text = data["candidates"][0]["content"]["parts"][0]["text"]
+            text = text.strip()
+            if text.startswith("```"):
+                text = re.sub(r"^```(?:json)?\s*", "", text, flags=re.I)
+                text = re.sub(r"\s*```$", "", text)
             parsed = AIClaimBatch.model_validate_json(text)
             original_map = {item.strip().lower(): item for item in selected}
             validated: list[dict] = []

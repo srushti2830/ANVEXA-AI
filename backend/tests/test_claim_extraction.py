@@ -14,6 +14,7 @@ from app.models.enums import ClaimType, DocumentStatus, ExtractionStatus
 from app.models.user import User
 from app.services.claim_extractor.claim_extractor import (
     detect_citation_markers,
+    gemini_extract,
     locate_sentences,
     rule_based_extract,
     split_sentences,
@@ -123,6 +124,25 @@ def test_empty_document_fallback(claim_db: Session) -> None:
     claim_count = claim_db.query(Claim).filter_by(document_version_id=version.id).count()
     assert claim_count == 0
     assert document.processing_status == DocumentStatus.COMPLETED
+
+
+def test_gemini_failure_uses_rule_based_path(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "app.services.claim_extractor.claim_extractor.get_settings",
+        lambda: type("Settings", (), {
+            "gemini_api_key": None,
+            "gemini_model": "gemini-test",
+            "gemini_timeout_seconds": 1,
+            "gemini_max_retries": 0,
+        })(),
+    )
+    located = locate_sentences({"pages": [{"page_number": 1, "text":
+        "The study found that 75 percent of participants improved."}]})
+    ai_claims, error = gemini_extract(located)
+    assert ai_claims == []
+    assert error
+    fallback = rule_based_extract(located)
+    assert fallback
 
 
 def test_database_persistence_page_and_duplicate_identity(claim_db: Session) -> None:
