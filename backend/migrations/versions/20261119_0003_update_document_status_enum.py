@@ -1,0 +1,68 @@
+"""Update document_status enum to add validating, queued, completed statuses.
+
+Revision ID: 20261119_0003
+Revises: 20261119_0002
+Create Date: 2026-11-19
+
+Phase 4: Document Management System — schema changes.
+
+Changes:
+- Adds 'validating', 'queued', 'completed' to the document_status check constraint.
+- Migrates existing 'ready' values to 'completed'.
+"""
+
+from typing import Sequence, Union
+
+from alembic import op
+import sqlalchemy as sa
+
+revision: str = "20261119_0003"
+down_revision: Union[str, None] = "20261119_0002"
+branch_labels: Union[str, Sequence[str], None] = None
+depends_on: Union[str, Sequence[str], None] = None
+
+
+def upgrade() -> None:
+    # 1. Migrate existing "ready" rows to "completed"
+    op.execute(
+        "UPDATE documents SET processing_status = 'completed' "
+        "WHERE processing_status = 'ready'"
+    )
+
+    # 2. Drop old check constraint (non-native enum uses a CHECK constraint)
+    op.drop_constraint(
+        "ck_documents_processing_status_document_status",
+        "documents",
+        type_="check",
+    )
+
+    # 3. Create new check constraint with all Phase 4 statuses
+    op.create_check_constraint(
+        "ck_documents_processing_status_document_status",
+        "documents",
+        "processing_status IN ('uploaded', 'validating', 'queued', "
+        "'processing', 'completed', 'failed')",
+    )
+
+
+def downgrade() -> None:
+    # Revert: completed -> ready, remove new statuses
+    op.execute(
+        "UPDATE documents SET processing_status = 'ready' "
+        "WHERE processing_status = 'completed'"
+    )
+    op.execute(
+        "UPDATE documents SET processing_status = 'uploaded' "
+        "WHERE processing_status IN ('validating', 'queued')"
+    )
+
+    op.drop_constraint(
+        "ck_documents_processing_status_document_status",
+        "documents",
+        type_="check",
+    )
+    op.create_check_constraint(
+        "ck_documents_processing_status_document_status",
+        "documents",
+        "processing_status IN ('uploaded', 'processing', 'ready', 'failed')",
+    )
