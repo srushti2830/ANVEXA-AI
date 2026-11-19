@@ -85,3 +85,38 @@ class DocumentVerificationResponse(BaseModel):
     failed_count: int
     needs_review_count: int
     results: list[VerificationResponse]
+
+
+class VerdictClassificationResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    verification_result_id: UUID
+    claim_id: UUID
+    ai_verdict: Verdict
+    final_verdict: Verdict
+    classification_method: str
+    classification_reason: str
+    classification_confidence: float = Field(ge=0.0, le=1.0)
+    supporting_evidence_ids: list[str] = Field(default_factory=list)
+    contradicting_evidence_ids: list[str] = Field(default_factory=list)
+    limitations: list[str] = Field(default_factory=list)
+    unresolved_questions: list[str] = Field(default_factory=list)
+    requires_human_review: bool
+    classified_at: datetime
+
+
+class HumanVerdictRequest(BaseModel):
+    verdict: Verdict
+    comment: str = Field(min_length=3, max_length=5000)
+    evidence_ids: list[UUID] = Field(default_factory=list)
+
+
+class HumanVerdictResponse(BaseModel):
+    review_id: UUID
+    verification_result_id: UUID
+    claim_id: UUID
+    original_ai_verdict: Verdict
+    human_verdict: Verdict
+    comment: str
+    is_resolved: bool
+    reviewed_at: datetime

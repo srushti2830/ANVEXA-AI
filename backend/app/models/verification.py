@@ -132,6 +132,13 @@ class VerificationResult(Base, UUIDPrimaryKey, TimestampMixin):
         server_default=text("false"),
     )
     error_message: Mapped[str | None] = mapped_column(Text)
+    final_verdict: Mapped[Verdict | None] = mapped_column(
+        enum_column(Verdict, "final_verdict"),
+    )
+    classification_method: Mapped[str | None] = mapped_column(String(80))
+    classification_reason: Mapped[str | None] = mapped_column(Text)
+    classification_confidence: Mapped[float | None] = mapped_column(Float)
+    classified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     model_provider: Mapped[str] = mapped_column(String(100), nullable=False)
     model_name: Mapped[str] = mapped_column(String(255), nullable=False)
     model_version: Mapped[str | None] = mapped_column(String(120))
