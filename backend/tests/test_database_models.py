@@ -117,6 +117,12 @@ def test_database_engine_enables_pre_ping(tmp_path) -> None:
         engine.dispose()
 
 
+def test_vite_development_origins_are_in_default_cors() -> None:
+    settings = Settings()
+    assert "http://127.0.0.1:5173" in settings.cors_origins
+    assert "http://localhost:5173" in settings.cors_origins
+
+
 def test_database_url_is_redacted_from_settings_repr() -> None:
     secret = "db-password"
     settings = Settings(
