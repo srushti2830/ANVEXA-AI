@@ -27,6 +27,7 @@ from app.database.base import Base
 from app.models.enums import (
     CitationStyle,
     ClaimType,
+    CitationMappingStatus,
     DocumentStatus,
     ExtractionStatus,
     enum_column,
@@ -384,6 +385,14 @@ class ClaimCitation(Base, UUIDPrimaryKey):
     citation_text: Mapped[str] = mapped_column(Text, nullable=False)
     page_number: Mapped[int | None] = mapped_column(Integer)
     character_offset: Mapped[int | None] = mapped_column(Integer)
+    mapping_status: Mapped[CitationMappingStatus] = mapped_column(
+        enum_column(CitationMappingStatus, "citation_mapping_status"),
+        nullable=False,
+        default=CitationMappingStatus.UNMATCHED,
+        server_default=text("'unmatched'"),
+    )
+    normalized_marker: Mapped[str | None] = mapped_column(String(500))
+    paragraph_number: Mapped[int | None] = mapped_column(Integer)
     mapping_method: Mapped[str] = mapped_column(
         String(80),
         nullable=False,
