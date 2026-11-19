@@ -301,7 +301,7 @@ def test_document_listing_is_user_scoped_and_paginated(db_session: Session) -> N
             file_hash=hash_character * 64,
             file_type="application/pdf",
             file_size=64,
-            processing_status=DocumentStatus.READY,
+            processing_status=DocumentStatus.COMPLETED,
         )
     db_session.commit()
 
