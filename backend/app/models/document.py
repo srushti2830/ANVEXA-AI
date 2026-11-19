@@ -152,7 +152,6 @@ class DocumentVersion(Base, UUIDPrimaryKey, TimestampMixin):
     )
     verification_results: Mapped[list[VerificationResult]] = relationship(
         back_populates="document_version",
-        cascade="all, delete-orphan",
     )
     reference_issues: Mapped[list[ReferenceIssue]] = relationship(
         back_populates="document_version",
@@ -254,7 +253,6 @@ class Claim(Base, UUIDPrimaryKey, TimestampMixin):
     )
     verification_results: Mapped[list[VerificationResult]] = relationship(
         back_populates="claim",
-        cascade="all, delete-orphan",
         order_by="VerificationResult.created_at",
     )
     feedback: Mapped[list[UserFeedback]] = relationship(back_populates="claim")

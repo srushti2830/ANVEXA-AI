@@ -21,7 +21,7 @@ from sqlalchemy import (
     func,
     text,
 )
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, synonym
 
 from backend.app.database.base import Base
 from backend.app.models.enums import (
@@ -34,6 +34,7 @@ from backend.app.models.enums import (
     ReportFormat,
     ReviewAction,
     Verdict,
+    VerificationStatus,
     enum_column,
 )
 from backend.app.models.mixins import TimestampMixin, UUIDPrimaryKey
@@ -61,16 +62,21 @@ class VerificationResult(Base, UUIDPrimaryKey, TimestampMixin):
     __tablename__ = "verification_results"
     __table_args__ = (
         Index("ix_verification_results_claim_created", "claim_id", "created_at"),
+        CheckConstraint(
+            "confidence_score IS NULL OR "
+            "(confidence_score >= 0 AND confidence_score <= 1)",
+            name="ck_verification_results_confidence",
+        ),
     )
 
     claim_id: Mapped[UUID] = mapped_column(
         Uuid(as_uuid=True),
-        ForeignKey("claims.id", ondelete="CASCADE"),
+        ForeignKey("claims.id", ondelete="RESTRICT"),
         nullable=False,
     )
     document_version_id: Mapped[UUID] = mapped_column(
         Uuid(as_uuid=True),
-        ForeignKey("document_versions.id", ondelete="CASCADE"),
+        ForeignKey("document_versions.id", ondelete="RESTRICT"),
         nullable=False,
     )
     verdict: Mapped[Verdict] = mapped_column(
@@ -80,6 +86,13 @@ class VerificationResult(Base, UUIDPrimaryKey, TimestampMixin):
     explanation: Mapped[str] = mapped_column(Text, nullable=False)
     confidence: Mapped[ConfidenceLabel | None] = mapped_column(
         enum_column(ConfidenceLabel, "confidence_label"),
+    )
+    confidence_score: Mapped[float | None] = mapped_column(Float)
+    verification_status: Mapped[VerificationStatus] = mapped_column(
+        enum_column(VerificationStatus, "verification_status"),
+        nullable=False,
+        default=VerificationStatus.COMPLETED,
+        server_default=text("'completed'"),
     )
     model_provider: Mapped[str] = mapped_column(String(100), nullable=False)
     model_name: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -100,8 +113,7 @@ class VerificationResult(Base, UUIDPrimaryKey, TimestampMixin):
     )
     reviews: Mapped[list[ReviewHistory]] = relationship(
         back_populates="verification_result",
-        cascade="all, delete-orphan",
-        order_by="ReviewHistory.created_at",
+        order_by="ReviewHistory.reviewed_at",
     )
     feedback: Mapped[list[UserFeedback]] = relationship(
         back_populates="verification_result"
@@ -208,14 +220,14 @@ class ReviewHistory(Base, UUIDPrimaryKey):
         Index(
             "ix_review_history_result_created",
             "verification_result_id",
-            "created_at",
+            "reviewed_at",
         ),
         Index("ix_review_history_reviewer", "reviewer_id"),
     )
 
     verification_result_id: Mapped[UUID] = mapped_column(
         Uuid(as_uuid=True),
-        ForeignKey("verification_results.id", ondelete="CASCADE"),
+        ForeignKey("verification_results.id", ondelete="RESTRICT"),
         nullable=False,
     )
     reviewer_id: Mapped[UUID] = mapped_column(
@@ -227,26 +239,30 @@ class ReviewHistory(Base, UUIDPrimaryKey):
         enum_column(ReviewAction, "review_action"),
         nullable=False,
     )
-    original_verdict: Mapped[Verdict] = mapped_column(
+    original_ai_verdict: Mapped[Verdict] = mapped_column(
         enum_column(Verdict, "review_original_verdict"),
         nullable=False,
     )
-    final_verdict: Mapped[Verdict] = mapped_column(
+    original_verdict = synonym("original_ai_verdict")
+    human_verdict: Mapped[Verdict] = mapped_column(
         enum_column(Verdict, "review_final_verdict"),
         nullable=False,
     )
-    comment: Mapped[str | None] = mapped_column(Text)
+    final_verdict = synonym("human_verdict")
+    reviewer_comment: Mapped[str | None] = mapped_column(Text)
+    comment = synonym("reviewer_comment")
     is_resolved: Mapped[bool] = mapped_column(
         Boolean,
         nullable=False,
         default=False,
         server_default=text("false"),
     )
-    created_at: Mapped[datetime] = mapped_column(
+    reviewed_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
         server_default=func.now(),
     )
+    created_at = synonym("reviewed_at")
 
     verification_result: Mapped[VerificationResult] = relationship(
         back_populates="reviews"
@@ -354,7 +370,8 @@ class ProcessingJob(Base, UUIDPrimaryKey, TimestampMixin):
     idempotency_key: Mapped[str | None] = mapped_column(String(255))
     error_message: Mapped[str | None] = mapped_column(Text)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    finished_at = synonym("completed_at")
 
     owner: Mapped[User] = relationship(back_populates="processing_jobs")
     document: Mapped[Document | None] = relationship(
