@@ -728,6 +728,9 @@ def test_storage_failure(doc_test_client, auth_headers) -> None:
         def exists(self, storage_key: str) -> bool:
             return False
 
+        def read(self, storage_key: str) -> bytes:
+            raise StorageError("Disk full")
+
         def get_path(self, storage_key: str) -> str:
             return ""
 
