@@ -1,1 +1,1 @@
-"""Database infrastructure package; configured in the database phase."""
+"""Database base, engine, session, and CRUD utilities."""

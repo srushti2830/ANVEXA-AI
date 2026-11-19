@@ -1,3 +1,5 @@
+"""SQLAlchemy entities used by the application and Alembic."""
+
 from backend.app.models.audit import AuditLog, UserFeedback
 from backend.app.models.document import (
     Claim,
