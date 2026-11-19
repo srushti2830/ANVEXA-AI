@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from datetime import datetime, timezone
 from uuid import UUID
 
@@ -19,6 +18,7 @@ from app.models.verification import (
     VerificationEvidence,
     VerificationResult,
 )
+from app.models.research import EvidencePassage
 
 
 def _owned_document(document_id: UUID, current_user: User, db: Session) -> Document:
@@ -307,10 +307,7 @@ def submit_human_verdict(
     db.add(review)
     db.flush()
     for evidence_id in evidence_ids:
-        evidence = db.get(
-            __import__("app.models.research", fromlist=["EvidencePassage"]).EvidencePassage,
-            evidence_id,
-        )
+        evidence = db.get(EvidencePassage, evidence_id)
         if evidence is not None:
             review.additional_evidence.append(evidence)
     result.final_verdict = verdict
