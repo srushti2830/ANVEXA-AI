@@ -318,6 +318,192 @@ def verify_claim(
         db.refresh(result)
         return result
 
+
+def get_claim_verification(
+    claim_id: UUID,
+    current_user: User,
+    db: Session,
+) -> VerificationResult:
+    claim = db.get(Claim, claim_id)
+    if claim is None:
+        raise HTTPException(status_code=404, detail="Claim not found")
+    doc = db.get(Document, claim.document_id)
+    if doc is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+    verify_resource_ownership(doc.user_id, current_user)
+    result = db.execute(
+        select(VerificationResult)
+        .where(VerificationResult.claim_id == claim_id)
+        .order_by(VerificationResult.created_at.desc())
+        .limit(1)
+    ).scalar_one_or_none()
+    if result is None:
+        raise HTTPException(status_code=404, detail="Verification result not found")
+    return result
+
+
+def get_verification_history(
+    claim_id: UUID,
+    current_user: User,
+    db: Session,
+    page: int = 1,
+    per_page: int = 20,
+) -> dict:
+    claim = db.get(Claim, claim_id)
+    if claim is None:
+        raise HTTPException(status_code=404, detail="Claim not found")
+    doc = db.get(Document, claim.document_id)
+    if doc is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+    verify_resource_ownership(doc.user_id, current_user)
+    statement = select(VerificationResult).where(
+        VerificationResult.claim_id == claim_id
+    )
+    all_results = list(db.execute(
+        statement.order_by(VerificationResult.created_at.desc())
+    ).scalars().all())
+    offset = (page - 1) * per_page
+    return {
+        "claim_id": claim_id,
+        "verification_results": all_results[offset:offset + per_page],
+        "pagination": {
+            "total": len(all_results),
+            "page": page,
+            "per_page": per_page,
+            "total_pages": (len(all_results) + per_page - 1) // per_page,
+        },
+    }
+
+
+def verify_document(
+    document_id: UUID,
+    current_user: User,
+    db: Session,
+) -> dict:
+    doc = _owned_document(document_id, current_user, db)
+    version = db.execute(
+        select(type(doc).versions.property.mapper.class_)
+    )
+    from app.models.document import DocumentVersion
+
+    latest_version = db.execute(
+        select(DocumentVersion)
+        .where(DocumentVersion.document_id == doc.id)
+        .order_by(DocumentVersion.version_number.desc())
+        .limit(1)
+    ).scalar_one_or_none()
+    if latest_version is None:
+        raise HTTPException(status_code=404, detail="Document has not been parsed yet")
+    claims = list(db.execute(
+        select(Claim)
+        .where(Claim.document_version_id == latest_version.id)
+        .order_by(Claim.created_at)
+    ).scalars().all())
+    results: list[VerificationResult] = []
+    verified_count = 0
+    failed_count = 0
+    needs_review_count = 0
+    for claim in claims:
+        try:
+            result = verify_claim(claim.id, current_user, db)
+            results.append(result)
+            if result.verification_status == VerificationStatus.COMPLETED:
+                verified_count += 1
+            elif result.verification_status == VerificationStatus.FAILED:
+                failed_count += 1
+            else:
+                needs_review_count += 1
+        except Exception as exc:
+            db.rollback()
+            logger.warning(
+                "Document claim verification failed: claim=%s error=%s",
+                claim.id,
+                type(exc).__name__,
+            )
+            result = VerificationResult(
+                claim_id=claim.id,
+                document_version_id=latest_version.id,
+                verdict=Verdict.NEEDS_REVIEW,
+                explanation="This claim could not be verified safely.",
+                confidence=ConfidenceLabel.LOW,
+                confidence_score=0.0,
+                verification_status=VerificationStatus.FAILED,
+                structured_analysis={},
+                supporting_evidence_ids=[],
+                contradicting_evidence_ids=[],
+                limitations=["Claim-level verification failed."],
+                unresolved_questions=["Retry this claim verification."],
+                model_provider="gemini",
+                model_name=get_settings().gemini_model,
+                prompt_version=PROMPT_VERSION,
+                requires_human_review=True,
+                error_message="Claim verification failed",
+                verified_at=datetime.now(timezone.utc),
+            )
+            db.add(result)
+            db.commit()
+            db.refresh(result)
+            results.append(result)
+            failed_count += 1
+    return {
+        "document_id": doc.id,
+        "version_id": latest_version.id,
+        "total_claims": len(claims),
+        "verified_count": verified_count,
+        "failed_count": failed_count,
+        "needs_review_count": needs_review_count,
+        "results": results,
+    }
+
+
+def get_document_verification(
+    document_id: UUID,
+    current_user: User,
+    db: Session,
+    page: int = 1,
+    per_page: int = 20,
+) -> dict:
+    doc = _owned_document(document_id, current_user, db)
+    from app.models.document import DocumentVersion
+
+    version = db.execute(
+        select(DocumentVersion)
+        .where(DocumentVersion.document_id == doc.id)
+        .order_by(DocumentVersion.version_number.desc())
+        .limit(1)
+    ).scalar_one_or_none()
+    if version is None:
+        raise HTTPException(status_code=404, detail="Document has not been parsed yet")
+    claim_ids = list(db.execute(
+        select(Claim.id).where(Claim.document_version_id == version.id)
+    ).scalars().all())
+    all_results: list[VerificationResult] = []
+    if claim_ids:
+        all_results = list(db.execute(
+            select(VerificationResult)
+            .where(VerificationResult.claim_id.in_(claim_ids))
+            .order_by(VerificationResult.created_at.desc())
+        ).scalars().all())
+    offset = (page - 1) * per_page
+    return {
+        "document_id": doc.id,
+        "version_id": version.id,
+        "total_claims": len(claim_ids),
+        "verified_count": sum(
+            1 for item in all_results
+            if item.verification_status == VerificationStatus.COMPLETED
+        ),
+        "failed_count": sum(
+            1 for item in all_results
+            if item.verification_status == VerificationStatus.FAILED
+        ),
+        "needs_review_count": sum(
+            1 for item in all_results
+            if item.verification_status == VerificationStatus.NEEDS_REVIEW
+        ),
+        "results": all_results[offset:offset + per_page],
+    }
+
     try:
         output = _gemini_verify(claim, evidence, references, db)
         result = VerificationResult(
