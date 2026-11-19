@@ -381,9 +381,6 @@ def verify_document(
     db: Session,
 ) -> dict:
     doc = _owned_document(document_id, current_user, db)
-    version = db.execute(
-        select(type(doc).versions.property.mapper.class_)
-    )
     from app.models.document import DocumentVersion
 
     latest_version = db.execute(
