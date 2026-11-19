@@ -38,3 +38,14 @@ Authorize in Swagger, then call:
 
 Configure retrieval timeout and retries with `ANVEXA_SOURCE_RETRIEVAL_TIMEOUT_SECONDS` and
 `ANVEXA_SOURCE_RETRIEVAL_MAX_RETRIES`. Providers require no API key for the public endpoints used.
+
+## Deferred validation for Phase 14
+
+The following items remain unverified and must be covered during the final validation phase:
+
+- Live PostgreSQL persistence of `ResearchSource`, `SourceVersion`, and `Citation.research_source_id`.
+- Live DOI resolution against Crossref and OpenAlex.
+- Real academic references with APA, IEEE, Vancouver, numbered, and author-year variants.
+- Provider timeout, retry, and rate-limit behavior over the network.
+- Cross-user access denial against live authentication and database state.
+- Verification that only metadata-only source snapshots are persisted and no full text is downloaded.
