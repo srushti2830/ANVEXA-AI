@@ -10,7 +10,8 @@ import os
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
-from fastapi import HTTPException, UploadFile, status
+from fastapi import HTTPException, UploadFile
+from starlette import status
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
