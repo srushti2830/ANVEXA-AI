@@ -92,6 +92,7 @@ def test_core_database_entities_are_registered() -> None:
         "audit_logs",
         "user_feedback",
         "review_evidence",
+        "refresh_tokens",
     }
 
     assert set(Base.metadata.tables) == expected_tables
