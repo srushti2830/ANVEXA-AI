@@ -202,7 +202,6 @@ def test_document_crud_round_trip(db_session: Session) -> None:
         db_session,
         User,
         email="owner@example.test",
-        hashed_password="not-a-real-password-hash",
         display_name="Owner",
     )
     document = create_record(
@@ -242,7 +241,6 @@ def test_document_version_and_page_relationships(db_session: Session) -> None:
         db_session,
         User,
         email="pages@example.test",
-        hashed_password="not-a-real-password-hash",
         full_name="Owner",
     )
     document = create_record(
@@ -283,14 +281,12 @@ def test_document_listing_is_user_scoped_and_paginated(db_session: Session) -> N
         db_session,
         User,
         email="first@example.test",
-        hashed_password="not-a-real-password-hash",
         full_name="First",
     )
     second_user = create_record(
         db_session,
         User,
         email="second@example.test",
-        hashed_password="not-a-real-password-hash",
         full_name="Second",
     )
     for user, hash_character in ((first_user, "d"), (first_user, "e"), (second_user, "f")):
@@ -325,7 +321,6 @@ def test_document_crud_filters_by_document_and_claim(db_session: Session) -> Non
         db_session,
         User,
         email="queries@example.test",
-        hashed_password="not-a-real-password-hash",
         full_name="Owner",
     )
     document = create_record(
@@ -409,7 +404,6 @@ def test_duplicate_document_content_is_rejected_per_owner(
         db_session,
         User,
         email="duplicate@example.test",
-        hashed_password="not-a-real-password-hash",
         display_name="Owner",
     )
     document_values = {
