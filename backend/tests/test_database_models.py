@@ -310,7 +310,7 @@ def test_document_listing_is_user_scoped_and_paginated(db_session: Session) -> N
         first_user.id,
         offset=1,
         limit=1,
-        processing_status=DocumentStatus.READY,
+        processing_status=DocumentStatus.COMPLETED,
     )
 
     assert len(documents) == 1
