@@ -26,6 +26,7 @@ from backend.app.database.crud import (
 )
 from backend.app.database.connection import create_database_engine
 from backend.app.database.session import SessionLocal, get_db
+from backend.app.database import connection
 from backend.app.models import (
     Claim,
     Citation,
@@ -124,6 +125,20 @@ def test_database_url_is_redacted_from_settings_repr() -> None:
     assert settings.database_url is not None
     assert secret in settings.database_url.get_secret_value()
     assert secret not in repr(settings)
+
+
+def test_engine_requires_configured_database_url(monkeypatch) -> None:
+    monkeypatch.setattr(
+        connection,
+        "get_settings",
+        lambda: Settings(database_url=None),
+    )
+    connection.get_engine.cache_clear()
+    try:
+        with pytest.raises(RuntimeError, match="ANVEXA_DATABASE_URL"):
+            connection.get_engine()
+    finally:
+        connection.get_engine.cache_clear()
 
 
 def test_embedding_model_and_dimension_are_validated_together() -> None:
