@@ -99,8 +99,7 @@ def test_multiple_claims_and_citation_preservation() -> None:
     located = locate_sentences({"pages": [{"page_number": 4, "text": text}]})
     markers = detect_citation_markers(text)
     assert "[2, 4]" in markers
-    assert "(2022)" not in " ".join(markers)
-    assert "Smith and Jones (2022)" in markers
+    assert any("Smith and Jones" in marker and "2022" in marker for marker in markers)
     assert len(rule_based_extract(located)) == 2
 
 

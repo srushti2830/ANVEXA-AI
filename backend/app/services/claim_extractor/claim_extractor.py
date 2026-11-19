@@ -190,6 +190,8 @@ def rule_based_extract(located: list[LocatedSentence]) -> list[dict]:
     extracted: list[dict] = []
     seen: set[tuple[int, int, str]] = set()
     for item in located:
+        if item.section_heading and BIBLIOGRAPHY_MARKERS.match(item.section_heading):
+            continue
         if not is_claim_candidate(item.text):
             continue
         key = (item.page_number, item.paragraph_index, item.text.strip())
