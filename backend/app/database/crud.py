@@ -1,13 +1,12 @@
+from collections.abc import Sequence
 from typing import Any, TypeVar
 from uuid import UUID
-
-from collections.abc import Sequence
 
 from sqlalchemy import Select, inspect, select
 from sqlalchemy.orm import Session
 
-from backend.app.database.base import Base
 from backend.app.core.embedding import EMBEDDING_DIMENSION
+from backend.app.database.base import Base
 from backend.app.models.research import Embedding, EvidencePassage
 
 ModelT = TypeVar("ModelT", bound=Base)
