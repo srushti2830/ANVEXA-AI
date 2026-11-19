@@ -2,7 +2,7 @@
 
 ## 1. Overall integration status
 
-**READY AFTER MINOR FIXES**
+**C. NOT READY — CRITICAL LIVE INTEGRATION ISSUES REMAIN**
 
 The frontend build, backend unit suite, route registration, CORS origin, migration SQL rendering,
 and static API integration audit pass. Phase 14 is not ready for deployment because live PostgreSQL,
