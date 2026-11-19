@@ -72,7 +72,7 @@ class UserFeedback(Base, UUIDPrimaryKey):
     )
     verification_result_id: Mapped[UUID] = mapped_column(
         Uuid(as_uuid=True),
-        ForeignKey("verification_results.id", ondelete="CASCADE"),
+        ForeignKey("verification_results.id", ondelete="RESTRICT"),
         nullable=False,
     )
     rating: Mapped[int] = mapped_column(Integer, nullable=False)

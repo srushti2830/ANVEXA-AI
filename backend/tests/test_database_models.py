@@ -4,7 +4,7 @@ from collections.abc import Iterator
 from uuid import UUID
 
 import pytest
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine, delete, event
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -372,6 +372,14 @@ def test_document_crud_filters_by_document_and_claim(db_session: Session) -> Non
     assert review.human_verdict == Verdict.SUPPORTED
     with pytest.raises(ValueError, match="cannot be deleted"):
         delete_record(db_session, verification)
+    with pytest.raises(IntegrityError):
+        db_session.execute(
+            delete(VerificationResult).where(
+                VerificationResult.id == verification.id
+            )
+        )
+    db_session.rollback()
+    assert get_record(db_session, VerificationResult, verification.id) is not None
 
 
 def test_duplicate_document_content_is_rejected_per_owner(
