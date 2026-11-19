@@ -9,6 +9,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Integer,
+    Index,
     JSON,
     String,
     Text,
@@ -16,6 +17,7 @@ from sqlalchemy import (
     func,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import synonym
 
 from backend.app.database.base import Base
 from backend.app.models.mixins import UUIDPrimaryKey
@@ -23,14 +25,18 @@ from backend.app.models.mixins import UUIDPrimaryKey
 
 class AuditLog(Base, UUIDPrimaryKey):
     __tablename__ = "audit_logs"
+    __table_args__ = (Index("ix_audit_logs_user_created", "user_id", "created_at"),)
 
-    actor_id: Mapped[UUID | None] = mapped_column(
+    user_id: Mapped[UUID | None] = mapped_column(
         Uuid(as_uuid=True),
         ForeignKey("users.id", ondelete="SET NULL"),
     )
+    actor_id = synonym("user_id")
     action: Mapped[str] = mapped_column(String(120), nullable=False)
-    target_type: Mapped[str] = mapped_column(String(120), nullable=False)
-    target_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True))
+    resource_type: Mapped[str] = mapped_column(String(120), nullable=False)
+    target_type = synonym("resource_type")
+    resource_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True))
+    target_id = synonym("resource_id")
     details: Mapped[dict[str, Any]] = mapped_column(
         JSON,
         nullable=False,
@@ -42,7 +48,10 @@ class AuditLog(Base, UUIDPrimaryKey):
         server_default=func.now(),
     )
 
-    actor: Mapped[User | None] = relationship(back_populates="audit_logs")
+    actor: Mapped[User | None] = relationship(
+        back_populates="audit_logs",
+        foreign_keys=[user_id],
+    )
 
 
 class UserFeedback(Base, UUIDPrimaryKey):
