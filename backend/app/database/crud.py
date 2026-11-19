@@ -1,10 +1,14 @@
 from typing import Any, TypeVar
 from uuid import UUID
 
-from sqlalchemy import inspect
+from collections.abc import Sequence
+
+from sqlalchemy import Select, inspect, select
 from sqlalchemy.orm import Session
 
 from backend.app.database.base import Base
+from backend.app.core.embedding import EMBEDDING_DIMENSION
+from backend.app.models.research import Embedding, EvidencePassage
 
 ModelT = TypeVar("ModelT", bound=Base)
 
@@ -53,3 +57,32 @@ def update_record(
 def delete_record(session: Session, record: ModelT) -> None:
     session.delete(record)
     session.flush()
+
+
+def similar_evidence_query(
+    query_vector: Sequence[float],
+    limit: int = 10,
+) -> Select[tuple[EvidencePassage]]:
+    if len(query_vector) != EMBEDDING_DIMENSION:
+        raise ValueError(
+            f"Embedding must contain exactly {EMBEDDING_DIMENSION} values."
+        )
+    if not 1 <= limit <= 100:
+        raise ValueError("Search limit must be between 1 and 100.")
+
+    distance = Embedding.vector.cosine_distance(list(query_vector))
+    return (
+        select(EvidencePassage)
+        .join(Embedding)
+        .order_by(distance)
+        .limit(limit)
+    )
+
+
+def search_similar_evidence(
+    session: Session,
+    query_vector: Sequence[float],
+    limit: int = 10,
+) -> list[EvidencePassage]:
+    statement = similar_evidence_query(query_vector, limit)
+    return list(session.scalars(statement).all())
