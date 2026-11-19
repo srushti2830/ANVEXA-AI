@@ -94,5 +94,6 @@ def test_phase10_through_phase13_migrations_render_offline() -> None:
     )
     assert "request_investigation" in result.stdout
     assert "ALTER TABLE review_history DROP CONSTRAINT review_action" in result.stdout
+    assert "action IN ('accept_ai', 'reject_ai'" in result.stdout
     assert "ALTER TABLE reports DROP CONSTRAINT report_format" in result.stdout
     assert "format IN ('pdf', 'csv', 'json')" in result.stdout

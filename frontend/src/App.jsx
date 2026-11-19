@@ -498,6 +498,10 @@ function Reviews() {
   }
   async function investigate() {
     if (!selected) return;
+    if (!explanation.trim() || explanation.trim().length < 10) {
+      setError("Reviewer explanation is required (at least 10 characters).");
+      return;
+    }
     setBusy(true);
     setError("");
     setSuccess("");

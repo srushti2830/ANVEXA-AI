@@ -59,7 +59,7 @@ def upgrade() -> None:
     op.create_check_constraint(
         "ck_review_history_action_review_action",
         "review_history",
-        "review_action IN ('accept_ai', 'reject_ai', 'change_verdict', "
+        "action IN ('accept_ai', 'reject_ai', 'change_verdict', "
         "'resolve', 'reopen', 'request_investigation')",
     )
 
@@ -73,7 +73,7 @@ def downgrade() -> None:
     op.create_check_constraint(
         "review_action",
         "review_history",
-        "review_action IN ('accept_ai', 'reject_ai', 'change_verdict', "
+        "action IN ('accept_ai', 'reject_ai', 'change_verdict', "
         "'resolve', 'reopen')",
     )
     op.drop_index(
