@@ -1,25 +1,36 @@
-from fastapi.testclient import TestClient
+import asyncio
+
+import httpx
 
 from backend.app.core.config import Settings
 from backend.app.main import create_app
 
 
-def test_health_endpoint_returns_ok() -> None:
-    client = TestClient(create_app(Settings()))
+def get_response(app, path: str) -> httpx.Response:
+    async def request() -> httpx.Response:
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(
+            transport=transport,
+            base_url="http://test",
+        ) as client:
+            return await client.get(path)
 
-    response = client.get("/health")
+    return asyncio.run(request())
+
+
+def test_health_endpoint_returns_ok() -> None:
+    response = get_response(create_app(Settings()), "/health")
 
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
 
 
-def test_openapi_documents_versioned_api_prefix() -> None:
-    client = TestClient(create_app(Settings()))
-
-    response = client.get("/openapi.json")
+def test_openapi_documents_health_endpoint() -> None:
+    response = get_response(create_app(Settings()), "/openapi.json")
 
     assert response.status_code == 200
     assert response.json()["info"]["title"] == "ANVEXA AI API"
+    assert "/health" in response.json()["paths"]
 
 
 def test_settings_read_environment_variables(monkeypatch) -> None:
