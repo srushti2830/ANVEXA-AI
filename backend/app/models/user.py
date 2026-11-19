@@ -10,10 +10,7 @@ from backend.app.models.mixins import TimestampMixin, UUIDPrimaryKey
 
 class User(Base, UUIDPrimaryKey, TimestampMixin):
     __tablename__ = "users"
-    __table_args__ = (
-        UniqueConstraint("email", name="uq_users_email"),
-        {"sqlite_autoincrement": False},
-    )
+    __table_args__ = (UniqueConstraint("email", name="uq_users_email"),)
 
     email: Mapped[str] = mapped_column(String(320), nullable=False)
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)

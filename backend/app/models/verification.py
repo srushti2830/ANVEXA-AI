@@ -4,6 +4,7 @@ from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import (
+    Boolean,
     CheckConstraint,
     Column,
     DateTime,
@@ -11,6 +12,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    JSON,
     String,
     Table,
     Text,
@@ -235,10 +237,10 @@ class ReviewHistory(Base, UUIDPrimaryKey):
     )
     comment: Mapped[str | None] = mapped_column(Text)
     is_resolved: Mapped[bool] = mapped_column(
-        Integer,
+        Boolean,
         nullable=False,
-        default=0,
-        server_default=text("0"),
+        default=False,
+        server_default=text("false"),
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
