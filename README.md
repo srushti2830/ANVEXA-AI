@@ -19,10 +19,12 @@ phases.
 
 ## Database setup
 
-Install PostgreSQL with the pgvector extension available, then set
+Install PostgreSQL and pgvector, create `anvexa_db`, and set
 `ANVEXA_DATABASE_URL` in `backend\.env` (copy `backend\.env.example` first).
 The database user must be allowed to create the `vector` extension for the
 initial migration, or an administrator can enable it before the migration.
+See the [backend setup guide](backend/README.md) for Windows installation,
+database creation, migration, health-check, and troubleshooting instructions.
 
 From the repository root, apply the schema with:
 
