@@ -317,37 +317,30 @@ def retrieve_sources(document_id: UUID, current_user: User, db: Session) -> dict
             duplicate_count += 1
 
         citation.research_source_id = source.id
+        raw = metadata.get("raw")
+        snapshot_text = repr(raw) if raw is not None else metadata["title"]
+        content_sha256 = hashlib.sha256(snapshot_text.encode("utf-8")).hexdigest()
         snapshot = db.execute(
             select(SourceVersion).where(
                 SourceVersion.source_id == source.id,
-                SourceVersion.content_sha256.is_not_distinct_from(None),
+                SourceVersion.content_sha256 == content_sha256,
             )
         ).scalar_one_or_none()
         if snapshot is None:
-            raw = metadata.get("raw")
-            snapshot_text = repr(raw) if raw is not None else metadata["title"]
-            content_sha256 = hashlib.sha256(snapshot_text.encode("utf-8")).hexdigest()
-            snapshot = db.execute(
-                select(SourceVersion).where(
-                    SourceVersion.source_id == source.id,
-                    SourceVersion.content_sha256 == content_sha256,
-                )
-            ).scalar_one_or_none()
-            if snapshot is None:
-                snapshot = SourceVersion(
-                    source_id=source.id,
-                    version_type=SourceVersionType.PUBLISHED,
-                    version_url=source.source_url,
-                    content_sha256=content_sha256,
-                    published_at=None,
-                    full_text_available=False,
-                    metadata_json={
-                        "provider": metadata.get("provider"),
-                        "retrieval_method": "metadata_api",
-                    },
-                )
-                db.add(snapshot)
-                db.flush()
+            snapshot = SourceVersion(
+                source_id=source.id,
+                version_type=SourceVersionType.PUBLISHED,
+                version_url=source.source_url,
+                content_sha256=content_sha256,
+                published_at=None,
+                full_text_available=False,
+                metadata_json={
+                    "provider": metadata.get("provider"),
+                    "retrieval_method": "metadata_api",
+                },
+            )
+            db.add(snapshot)
+            db.flush()
 
         if source not in sources:
             sources.append(source)
