@@ -80,10 +80,21 @@ def split_sentences(text: str) -> list[str]:
         protected,
         flags=re.I,
     )
+    protected = re.sub(
+        r"\b(Dr|Mr|Mrs|Ms|Prof|Fig|Figs|e\.g|i\.e|vs|etc|Vol|Eq)\.",
+        lambda m: m.group(0).replace(".", "<ABBR_DOT>"),
+        protected,
+        flags=re.I,
+    )
     parts = re.split(r"(?<=[.!?])\s+(?=[A-Z0-9\[\(])", protected)
     result: list[str] = []
     for part in parts:
-        part = part.replace("<DECIMAL_DOT>", ".").replace("<DOI_DOT>", ".").strip()
+        part = (
+            part.replace("<DECIMAL_DOT>", ".")
+            .replace("<DOI_DOT>", ".")
+            .replace("<ABBR_DOT>", ".")
+            .strip()
+        )
         if ABBREVIATIONS.search(part) and len(result) == 0:
             continue
         if part:
@@ -104,7 +115,7 @@ def detect_citation_markers(text: str) -> list[str]:
 def classify_claim(sentence: str) -> ClaimType:
     lower = sentence.lower()
     if re.search(r"\b(percent|percentage|p\s*[=<>]|confidence interval|odds ratio|p-value)\b", lower):
-        return ClaimType.STATISTICAl if False else ClaimType.STATISTICAL
+        return ClaimType.STATISTICAL
     if re.search(r"\b(higher|lower|greater|less|more|than|versus|compared with|outperforms)\b", lower):
         return ClaimType.COMPARATIVE
     if re.search(r"\b(causes?|caused|because|leads? to|increases?|decreases?|due to|results? in)\b", lower):

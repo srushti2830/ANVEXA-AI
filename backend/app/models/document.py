@@ -224,7 +224,9 @@ class Claim(Base, UUIDPrimaryKey, TimestampMixin):
     paragraph_index = synonym("paragraph_number")
     page_number: Mapped[int | None] = mapped_column(Integer)
     original_text: Mapped[str] = mapped_column(Text, nullable=False)
+    original_sentence = synonym("original_text")
     normalized_text: Mapped[str | None] = mapped_column(Text)
+    claim_text = synonym("normalized_text")
     context_text: Mapped[str | None] = mapped_column(Text)
     claim_type: Mapped[ClaimType] = mapped_column(
         enum_column(ClaimType, "claim_type"),
@@ -238,6 +240,7 @@ class Claim(Base, UUIDPrimaryKey, TimestampMixin):
         default=True,
         server_default=text("true"),
     )
+    is_verifiable = synonym("requires_external_verification")
     extraction_method: Mapped[str | None] = mapped_column(String(120))
     section_heading: Mapped[str | None] = mapped_column(String(500))
     extraction_confidence: Mapped[float | None] = mapped_column(Float)
