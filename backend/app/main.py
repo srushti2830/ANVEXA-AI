@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from backend.app.api.router import api_router
 from backend.app.core.config import Settings, get_settings
@@ -13,6 +14,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         version=app_settings.app_version,
         description="Evidence-traceable academic document verification API.",
     )
+
+    # CORS configuration
+    application.add_middleware(
+        CORSMiddleware,
+        allow_origins=app_settings.cors_origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
     application.include_router(api_router, prefix=app_settings.api_v1_prefix)
 
     @application.get("/health", tags=["system"])
