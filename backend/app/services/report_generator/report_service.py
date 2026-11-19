@@ -246,16 +246,32 @@ def build_document_report(
         select(Citation)
         .where(Citation.document_version_id == version.id)
     ).scalars().all()) if version else []
+    passage_source_ids = list(db.execute(
+        select(EvidencePassage.source_id)
+        .where(EvidencePassage.claim_id.in_(claim_ids))
+        .distinct()
+    ).scalars().all()) if claim_ids else []
+    linked_source_ids = [
+        citation.research_source_id
+        for citation in citations
+        if citation.research_source_id is not None
+    ]
+    source_ids = list(dict.fromkeys(
+        linked_source_ids + passage_source_ids
+    ))
     sources = list(db.execute(
         select(ResearchSource)
-        .join(Citation, Citation.research_source_id == ResearchSource.id)
-        .where(Citation.document_version_id == version.id)
+        .where(ResearchSource.id.in_(source_ids))
         .distinct()
-    ).scalars().all()) if version else []
+    ).scalars().all()) if source_ids else []
     evidence_count = len(list(db.execute(
         select(EvidencePassage)
-        .where(EvidencePassage.source_id.in_([source.id for source in sources]))
-    ).scalars().all())) if sources else 0
+        .where(
+            EvidencePassage.claim_id.in_(claim_ids)
+            if claim_ids
+            else EvidencePassage.source_id.in_(source_ids)
+        )
+    ).scalars().all())) if claim_ids or source_ids else 0
 
     human_reviewed = sum(
         1 for claim in claims
