@@ -32,10 +32,7 @@ def upgrade() -> None:
     )
     op.create_table('users',
     sa.Column('email', sa.String(length=320), nullable=False),
-    sa.Column('hashed_password', sa.String(length=255), nullable=False),
     sa.Column('full_name', sa.String(length=200), nullable=False),
-    sa.Column('role', sa.Enum('user', 'reviewer', 'admin', name='user_role', native_enum=False, create_constraint=True), server_default=sa.text("'user'"), nullable=False),
-    sa.Column('is_active', sa.Boolean(), server_default=sa.text('true'), nullable=False),
     sa.Column('id', sa.Uuid(), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
