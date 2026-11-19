@@ -149,6 +149,17 @@ def lookup_crossref_by_query(citation: Citation) -> dict[str, Any] | None:
     doi = normalize_doi(best.get("DOI"))
     title_values = best.get("title")
     title = title_values[0] if isinstance(title_values, list) and title_values else "Unknown source"
+    published_year = None
+    published = best.get("published")
+    if isinstance(published, dict):
+        date_parts = published.get("date-parts")
+        if isinstance(date_parts, list) and date_parts:
+            first_part = date_parts[0]
+            if isinstance(first_part, list) and first_part:
+                try:
+                    published_year = int(first_part[0])
+                except (TypeError, ValueError):
+                    published_year = None
     return {
         "doi": doi,
         "title": title if isinstance(title, str) else "Unknown source",
@@ -160,11 +171,7 @@ def lookup_crossref_by_query(citation: Citation) -> dict[str, Any] | None:
             for author in (best.get("author") or [])
             if isinstance(author, dict)
         ],
-        "publication_year": (
-            best.get("published", {}).get("date-parts", [[None]])[0][0]
-            if isinstance(best.get("published"), dict)
-            else None
-        ),
+        "publication_year": published_year,
         "journal": (
             best.get("container-title", [None])[0]
             if isinstance(best.get("container-title"), list) and best.get("container-title")
