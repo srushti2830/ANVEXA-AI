@@ -68,6 +68,12 @@ def classify_verification_result(result: VerificationResult) -> tuple[Verdict, s
         )
 
     if result.requires_human_review or not supporting:
+        if result.verdict == Verdict.UNSUPPORTED and not result.requires_human_review:
+            return (
+                Verdict.UNSUPPORTED,
+                "The Phase 10 analysis found no demonstrated support for the claim.",
+                max(0.0, min(1.0, result.confidence_score or 0.45)),
+            )
         if result.requires_human_review:
             reason = "Human review is required by the Phase 10 analysis."
         else:
