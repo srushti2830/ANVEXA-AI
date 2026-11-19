@@ -107,7 +107,7 @@ def test_database_engine_enables_pre_ping(tmp_path) -> None:
         f"sqlite+pysqlite:///{tmp_path.as_posix()}/test.db"
     )
     try:
-        assert engine.dialect.name == "postgresql"
+        assert engine.dialect.name == "sqlite"
         assert engine.pool._pre_ping
     finally:
         engine.dispose()

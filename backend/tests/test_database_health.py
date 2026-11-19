@@ -24,7 +24,10 @@ def get_response(app: FastAPI, path: str) -> httpx.Response:
 
 
 def test_session_dependency_uses_injected_engine(monkeypatch) -> None:
-    engine = create_engine("sqlite+pysqlite:///:memory:")
+    engine = create_engine(
+        "sqlite+pysqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+    )
     monkeypatch.setattr(
         "backend.app.database.session.get_engine",
         lambda: engine,
@@ -41,7 +44,10 @@ def test_session_dependency_uses_injected_engine(monkeypatch) -> None:
 
 
 def test_database_health_reports_connection_and_pgvector(monkeypatch) -> None:
-    engine = create_engine("sqlite+pysqlite:///:memory:")
+    engine = create_engine(
+        "sqlite+pysqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+    )
     with engine.begin() as connection:
         connection.execute(text("CREATE TABLE pg_extension (extname TEXT)"))
         connection.execute(
