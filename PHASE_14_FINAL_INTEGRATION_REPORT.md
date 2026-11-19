@@ -19,7 +19,8 @@ remain untested.
 
 ## 3. Backend test results
 
-- PASS: complete pytest suite: **185 passed, 0 failed, 0 skipped**.
+- PASS: complete pytest suite: **189 passed, 0 failed, 0 skipped**.
+- PASS: HTTP integration/migration subset: **7 passed**.
 - PASS: backend dependency check.
 - PASS: FastAPI startup.
 - PASS: `/health` returned `{"status":"ok"}`.
