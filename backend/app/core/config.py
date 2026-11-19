@@ -42,7 +42,12 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = Field(default=30, ge=1)
     refresh_token_expire_days: int = Field(default=7, ge=1)
     cors_origins: list[str] = Field(
-        default=["http://localhost:3000", "http://127.0.0.1:3000"]
+        default=[
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
+        ]
     )
     auth_rate_limit_max_attempts: int = Field(default=5, ge=1)
     auth_rate_limit_lockout_seconds: int = Field(default=300, ge=1)

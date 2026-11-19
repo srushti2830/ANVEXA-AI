@@ -1,6 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { Link, Navigate, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
 import api, { errorMessage } from "./api";
+import {
+  clearAuthTokens,
+  getAccessToken,
+  getRefreshToken,
+  setAccessToken,
+  setRefreshToken,
+} from "./authStorage";
 
 const verdictLabels = [
   "SUPPORTED",
@@ -15,7 +22,7 @@ function useAuth() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
-    const token = localStorage.getItem("anvexa_access_token");
+    const token = getAccessToken();
     if (!token) {
       setLoading(false);
       return;
@@ -23,8 +30,7 @@ function useAuth() {
     api.get("/auth/me")
       .then((response) => setUser(response.data))
       .catch(() => {
-        localStorage.removeItem("anvexa_access_token");
-        localStorage.removeItem("anvexa_refresh_token");
+        clearAuthTokens();
       })
       .finally(() => setLoading(false));
   }, []);
@@ -54,12 +60,11 @@ function Layout({ children }) {
     api.get("/auth/me").then((response) => setUser(response.data)).catch(() => {});
   }, []);
   async function logout() {
-    const refreshToken = localStorage.getItem("anvexa_refresh_token");
+    const refreshToken = getRefreshToken();
     try {
       if (refreshToken) await api.post("/auth/logout", { refresh_token: refreshToken });
     } catch (_) {}
-    localStorage.removeItem("anvexa_access_token");
-    localStorage.removeItem("anvexa_refresh_token");
+    clearAuthTokens();
     navigate("/login");
   }
   const links = [
@@ -147,8 +152,8 @@ function AuthPage({ mode }) {
         email: form.email,
         password: form.password,
       });
-      localStorage.setItem("anvexa_access_token", response.data.access_token);
-      localStorage.setItem("anvexa_refresh_token", response.data.refresh_token);
+      setAccessToken(response.data.access_token);
+      setRefreshToken(response.data.refresh_token);
       navigate("/app/dashboard");
     } catch (err) {
       setError(errorMessage(err));

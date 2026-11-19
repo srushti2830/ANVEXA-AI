@@ -66,7 +66,7 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     op.drop_constraint(
-        "ck_review_history_review_action",
+        "ck_review_history_action_review_action",
         "review_history",
         type_="check",
     )
