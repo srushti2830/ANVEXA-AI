@@ -145,6 +145,14 @@ class ReviewAction(str, Enum):
     CHANGE_VERDICT = "change_verdict"
     RESOLVE = "resolve"
     REOPEN = "reopen"
+    REQUEST_INVESTIGATION = "request_investigation"
+
+
+class ReviewStatus(str, Enum):
+    PENDING = "pending"
+    IN_REVIEW = "in_review"
+    RESOLVED = "resolved"
+    INVESTIGATION_REQUESTED = "investigation_requested"
 
 
 class ReportFormat(str, Enum):

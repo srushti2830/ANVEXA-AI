@@ -30,6 +30,7 @@ from app.models.enums import (
     IssueCertainty,
     ProcessingJobType,
     ProcessingStatus,
+    ReviewStatus,
     ReferenceIssueType,
     ReportFormat,
     ReviewAction,
@@ -132,6 +133,19 @@ class VerificationResult(Base, UUIDPrimaryKey, TimestampMixin):
         server_default=text("false"),
     )
     error_message: Mapped[str | None] = mapped_column(Text)
+    review_status: Mapped[ReviewStatus] = mapped_column(
+        enum_column(ReviewStatus, "human_review_status"),
+        nullable=False,
+        default=ReviewStatus.PENDING,
+        server_default=text("'pending'"),
+    )
+    assigned_reviewer_id: Mapped[UUID | None] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+    )
+    review_requested_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
     final_verdict: Mapped[Verdict | None] = mapped_column(
         enum_column(Verdict, "final_verdict"),
     )
