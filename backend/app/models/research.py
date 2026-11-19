@@ -9,6 +9,7 @@ from sqlalchemy import (
     Boolean,
     CheckConstraint,
     DateTime,
+    Float,
     ForeignKey,
     Index,
     Integer,
@@ -20,11 +21,11 @@ from sqlalchemy import (
     func,
     text,
 )
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, synonym
 
 from backend.app.core.embedding import EMBEDDING_DIMENSION, EMBEDDING_MODEL
 from backend.app.database.base import Base
-from backend.app.models.enums import SourceVersionType, enum_column
+from backend.app.models.enums import RetrievalStatus, SourceVersionType, enum_column
 from backend.app.models.mixins import TimestampMixin, UUIDPrimaryKey
 
 
@@ -46,7 +47,14 @@ class ResearchSource(Base, UUIDPrimaryKey, TimestampMixin):
     publication_year: Mapped[int | None] = mapped_column(Integer)
     journal: Mapped[str | None] = mapped_column(String(500))
     canonical_url: Mapped[str | None] = mapped_column(String(2048))
+    source_url = synonym("canonical_url")
     abstract: Mapped[str | None] = mapped_column(Text)
+    retrieval_status: Mapped[RetrievalStatus] = mapped_column(
+        enum_column(RetrievalStatus, "research_source_retrieval_status"),
+        nullable=False,
+        default=RetrievalStatus.PENDING,
+        server_default=text("'pending'"),
+    )
     is_retracted: Mapped[bool] = mapped_column(
         Boolean,
         nullable=False,
@@ -66,6 +74,10 @@ class ResearchSource(Base, UUIDPrimaryKey, TimestampMixin):
     )
     citations: Mapped[list[Citation]] = relationship(
         back_populates="research_source"
+    )
+    evidence_passages: Mapped[list[EvidencePassage]] = relationship(
+        back_populates="source",
+        cascade="all, delete-orphan",
     )
     reference_issues: Mapped[list[ReferenceIssue]] = relationship(
         back_populates="source"
