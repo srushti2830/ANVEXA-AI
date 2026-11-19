@@ -206,6 +206,13 @@ class Claim(Base, UUIDPrimaryKey, TimestampMixin):
         ),
         Index("ix_claims_document_id", "document_id"),
         Index("ix_claims_version_page", "document_version_id", "page_id"),
+        UniqueConstraint(
+            "document_version_id",
+            "page_number",
+            "paragraph_number",
+            "normalized_text",
+            name="uq_claims_version_location_text",
+        ),
         ForeignKeyConstraint(
             ["document_id", "document_version_id"],
             ["document_versions.document_id", "document_versions.id"],

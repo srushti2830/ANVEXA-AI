@@ -160,6 +160,13 @@ def locate_sentences(parsed_content: dict) -> list[LocatedSentence]:
         page_number = int(page.get("page_number") or 1)
         page_text = str(page.get("text") or "")
         metadata = page.get("metadata") or {}
+        metadata_headings = metadata.get("headings") or []
+        if isinstance(metadata_headings, list) and metadata_headings:
+            first_heading = metadata_headings[0]
+            if isinstance(first_heading, dict):
+                first_heading = first_heading.get("text")
+            if isinstance(first_heading, str) and first_heading.strip():
+                current_heading = first_heading.strip()
         for block_index, paragraph in enumerate(re.split(r"\n{2,}|\r\n\r\n", page_text)):
             paragraph = paragraph.strip()
             if not paragraph:
@@ -258,7 +265,7 @@ def gemini_extract(located: list[LocatedSentence]) -> tuple[list[dict], str | No
             validated: list[dict] = []
             for claim in parsed.claims:
                 exact = claim.claim_text.strip()
-                if exact.lower() not in {sentence.strip().lower() for sentence in selected}:
+                if not any(exact.lower() in sentence.lower() for sentence in selected):
                     continue
                 if claim.claim_type not in {member.value for member in ClaimType}:
                     claim.claim_type = "general_factual"

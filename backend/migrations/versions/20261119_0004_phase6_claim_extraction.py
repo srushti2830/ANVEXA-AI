@@ -33,9 +33,19 @@ def upgrade() -> None:
         "'comparative', 'causal', 'methodological', 'medical', 'technical', "
         "'historical', 'general_factual', 'descriptive', 'temporal', 'other')",
     )
+    op.create_unique_constraint(
+        "uq_claims_version_location_text",
+        "claims",
+        ["document_version_id", "page_number", "paragraph_number", "normalized_text"],
+    )
 
 
 def downgrade() -> None:
+    op.drop_constraint(
+        "uq_claims_version_location_text",
+        "claims",
+        type_="unique",
+    )
     op.drop_constraint(
         "ck_claims_claim_type_claim_type",
         "claims",
