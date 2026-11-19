@@ -671,3 +671,46 @@ def test_login_rate_limiting(test_client) -> None:
     )
     assert blocked.status_code == 429
     assert "too many" in blocked.json()["detail"].lower()
+
+
+# ---------------------------------------------------------------------------
+# Database Unavailability Tests
+# ---------------------------------------------------------------------------
+
+
+def test_login_returns_503_when_database_not_configured() -> None:
+    """When ANVEXA_DATABASE_URL is unset the login endpoint must return 503,
+    not an opaque 500 Internal Server Error."""
+    get_settings.cache_clear()
+    rate_limiter.reset_all()
+    application = create_app()
+    # Do NOT override get_db — let the real dependency try to connect
+
+    response = client_request(
+        application,
+        "POST",
+        "/api/v1/auth/login",
+        json={"email": "user@example.com", "password": "Password123!"},
+    )
+    assert response.status_code == 503
+    assert "database" in response.json()["detail"].lower()
+
+
+def test_register_returns_503_when_database_not_configured() -> None:
+    """Registration must also return 503 when the database is unreachable."""
+    get_settings.cache_clear()
+    rate_limiter.reset_all()
+    application = create_app()
+
+    response = client_request(
+        application,
+        "POST",
+        "/api/v1/auth/register",
+        json={
+            "email": "newuser@example.com",
+            "full_name": "Test User",
+            "password": "Password123!",
+        },
+    )
+    assert response.status_code == 503
+    assert "database" in response.json()["detail"].lower()
