@@ -17,6 +17,7 @@ from backend.app.database.crud import (
     similar_evidence_query,
     update_record,
 )
+from backend.app.database.connection import create_database_engine
 from backend.app.models import Document, Embedding, User
 
 
@@ -76,6 +77,17 @@ def test_embedding_dimension_matches_configured_model() -> None:
     assert vector_type.dim == EMBEDDING_DIMENSION
     assert EMBEDDING_MODEL == "sentence-transformers/all-MiniLM-L6-v2"
     assert EMBEDDING_DIMENSION == 384
+
+
+def test_postgresql_engine_uses_postgresql_driver_without_connecting() -> None:
+    engine = create_database_engine(
+        "postgresql+psycopg://test-user:test-password@localhost:5432/test-db"
+    )
+    try:
+        assert engine.dialect.name == "postgresql"
+        assert engine.pool._pre_ping
+    finally:
+        engine.dispose()
 
 
 def test_semantic_search_compiles_to_pgvector_cosine_query() -> None:
