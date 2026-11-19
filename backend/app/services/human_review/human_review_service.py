@@ -14,6 +14,7 @@ from app.models.document import Claim, Document, DocumentVersion
 from app.models.enums import (
     ReviewAction,
     ReviewStatus,
+    UserRole,
     Verdict,
 )
 from app.models.research import EvidencePassage, ResearchSource
@@ -119,17 +120,12 @@ def get_review_queue(
             document = db.get(Document, document_id)
             if document is None:
                 raise HTTPException(status_code=404, detail="Document not found")
-            from app.models.enums import UserRole
             verify_resource_ownership(
                 document.user_id,
                 reviewer,
-                allow_roles=(UserRole.ADMIN,),
+                allow_roles=(UserRole.REVIEWER, UserRole.ADMIN),
             )
             statement = statement.where(VerificationResult.claim_id.in_(claim_ids))
-    if verdict is not None:
-        statement = statement.where(
-            select(VerificationResult.final_verdict).scalar_subquery() == verdict
-        )
     if review_status is not None:
         statement = statement.where(VerificationResult.review_status == review_status)
     else:
