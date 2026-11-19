@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Literal
 
 from pydantic import Field
+from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -19,6 +20,7 @@ class Settings(BaseSettings):
     environment: Literal["development", "test", "production"] = "development"
     api_v1_prefix: str = Field(default="/api/v1", pattern=r"^/")
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
+    database_url: SecretStr | None = None
 
 
 @lru_cache
