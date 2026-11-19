@@ -6,9 +6,11 @@ from uuid import UUID
 import pytest
 from sqlalchemy import create_engine, event
 from sqlalchemy.dialects import postgresql
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from backend.app.core.embedding import EMBEDDING_DIMENSION, EMBEDDING_MODEL
+from backend.app.core.config import Settings
 from backend.app.database.base import Base
 from backend.app.database.crud import (
     create_record,
@@ -90,6 +92,17 @@ def test_postgresql_engine_uses_postgresql_driver_without_connecting() -> None:
         engine.dispose()
 
 
+def test_database_url_is_redacted_from_settings_repr() -> None:
+    secret = "db-password"
+    settings = Settings(
+        database_url=f"postgresql+pg8000://user:{secret}@localhost/anvexa"
+    )
+
+    assert settings.database_url is not None
+    assert secret in settings.database_url.get_secret_value()
+    assert secret not in repr(settings)
+
+
 def test_semantic_search_compiles_to_pgvector_cosine_query() -> None:
     statement = similar_evidence_query([0.0] * EMBEDDING_DIMENSION)
 
@@ -141,7 +154,9 @@ def test_document_crud_round_trip(db_session: Session) -> None:
 
     update_record(db_session, loaded, title="Updated article")
     db_session.commit()
-    assert get_record(db_session, Document, document_id).title == "Updated article"
+    updated = get_record(db_session, Document, document_id)
+    assert updated is not None
+    assert updated.title == "Updated article"
 
     with pytest.raises(ValueError, match="primary-key"):
         update_record(db_session, loaded, id=UUID(int=0))
@@ -149,3 +164,34 @@ def test_document_crud_round_trip(db_session: Session) -> None:
     delete_record(db_session, loaded)
     db_session.commit()
     assert get_record(db_session, Document, document_id) is None
+
+
+def test_duplicate_document_content_is_rejected_per_owner(
+    db_session: Session,
+) -> None:
+    user = create_record(
+        db_session,
+        User,
+        email="duplicate@example.test",
+        hashed_password="not-a-real-password-hash",
+        display_name="Owner",
+    )
+    document_values = {
+        "owner_id": user.id,
+        "title": "First upload",
+        "original_filename": "paper.pdf",
+        "storage_key": "documents/paper.pdf",
+        "content_sha256": "b" * 64,
+        "media_type": "application/pdf",
+        "size_bytes": 64,
+    }
+    create_record(db_session, Document, **document_values)
+    db_session.commit()
+
+    with pytest.raises(IntegrityError):
+        create_record(
+            db_session,
+            Document,
+            **{**document_values, "title": "Duplicate upload"},
+        )
+    db_session.rollback()
