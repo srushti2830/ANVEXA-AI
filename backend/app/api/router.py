@@ -12,6 +12,9 @@ from app.api.endpoints.users import router as users_router
 from app.api.endpoints.sources import document_router as sources_router
 from app.api.endpoints.sources import claim_router as claim_sources_router
 from app.api.endpoints.sources import source_router as research_sources_router
+from app.api.endpoints.evidence import claim_router as claim_evidence_router
+from app.api.endpoints.evidence import document_router as document_evidence_router
+from app.api.endpoints.evidence import source_router as source_evidence_router
 
 api_router = APIRouter()
 api_router.include_router(health_router)
@@ -26,3 +29,6 @@ api_router.include_router(claim_citations_router)
 api_router.include_router(sources_router)
 api_router.include_router(claim_sources_router)
 api_router.include_router(research_sources_router)
+api_router.include_router(claim_evidence_router)
+api_router.include_router(document_evidence_router)
+api_router.include_router(source_evidence_router)
