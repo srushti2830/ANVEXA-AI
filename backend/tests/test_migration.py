@@ -19,7 +19,7 @@ def test_initial_migration_renders_postgresql_schema_offline() -> None:
             "-c",
             "backend/alembic.ini",
             "upgrade",
-            "head",
+            "20261119_0001",
             "--sql",
         ],
         cwd=repository_root,
@@ -34,3 +34,36 @@ def test_initial_migration_renders_postgresql_schema_offline() -> None:
     assert "USING hnsw" in result.stdout
     assert "CREATE TABLE claims" in result.stdout
     assert "CREATE TABLE verification_results" in result.stdout
+
+
+def test_auth_migration_renders_postgresql_schema_offline() -> None:
+    repository_root = Path(__file__).resolve().parents[2]
+    environment = os.environ.copy()
+    environment["ANVEXA_DATABASE_URL"] = (
+        "postgresql+psycopg://user:password@localhost:5432/anvexa_db"
+    )
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "alembic",
+            "-c",
+            "backend/alembic.ini",
+            "upgrade",
+            "head",
+            "--sql",
+        ],
+        cwd=repository_root,
+        env=environment,
+        capture_output=True,
+        check=True,
+        text=True,
+    )
+
+    assert len(re.findall(r"(?m)^CREATE TABLE ", result.stdout)) == 22
+    assert "CREATE TABLE refresh_tokens" in result.stdout
+    assert "ALTER TABLE users ADD COLUMN hashed_password" in result.stdout
+    assert "ALTER TABLE users ADD COLUMN role" in result.stdout
+    assert "ALTER TABLE users ADD COLUMN is_active" in result.stdout
+    assert "ALTER TABLE users ADD COLUMN is_verified" in result.stdout
+    assert "CREATE UNIQUE INDEX ix_refresh_tokens_token_hash" in result.stdout
