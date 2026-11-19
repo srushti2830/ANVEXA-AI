@@ -24,7 +24,6 @@ from backend.app.models.enums import (
     RetrievalStatus,
     ReviewAction,
     SourceVersionType,
-    UserRole,
     Verdict,
     VerificationStatus,
 )
@@ -76,7 +75,6 @@ __all__ = [
     "SourceVersionType",
     "User",
     "UserFeedback",
-    "UserRole",
     "Verdict",
     "VerificationStatus",
     "VerificationEvidence",

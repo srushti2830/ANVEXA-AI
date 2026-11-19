@@ -3,12 +3,6 @@ from enum import Enum
 from sqlalchemy import Enum as SQLAlchemyEnum
 
 
-class UserRole(str, Enum):
-    USER = "user"
-    REVIEWER = "reviewer"
-    ADMIN = "admin"
-
-
 class DocumentStatus(str, Enum):
     UPLOADED = "uploaded"
     PROCESSING = "processing"
