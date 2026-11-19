@@ -117,7 +117,7 @@ def parse_document(
         doc.processing_status = DocumentStatus.FAILED
         db.commit()
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=422,
             detail=f"Document parsing failed: {exc}",
         ) from exc
 
