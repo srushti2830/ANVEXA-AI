@@ -20,3 +20,9 @@ def test_openapi_documents_versioned_api_prefix() -> None:
 
     assert response.status_code == 200
     assert response.json()["info"]["title"] == "ANVEXA AI API"
+
+
+def test_settings_read_environment_variables(monkeypatch) -> None:
+    monkeypatch.setenv("ANVEXA_APP_NAME", "Test API")
+
+    assert Settings().app_name == "Test API"
