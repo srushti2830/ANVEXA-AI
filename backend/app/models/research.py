@@ -228,6 +228,10 @@ class EvidencePassage(Base, UUIDPrimaryKey, TimestampMixin):
 class Embedding(Base, UUIDPrimaryKey, TimestampMixin):
     __tablename__ = "embeddings"
     __table_args__ = (
+        CheckConstraint(
+            "(evidence_passage_id IS NOT NULL) OR (claim_id IS NOT NULL)",
+            name="ck_embeddings_owner",
+        ),
         Index(
             "ix_embeddings_vector_hnsw",
             "vector",
@@ -240,7 +244,7 @@ class Embedding(Base, UUIDPrimaryKey, TimestampMixin):
     evidence_passage_id: Mapped[UUID | None] = mapped_column(
         Uuid(as_uuid=True),
         ForeignKey("evidence_passages.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
         unique=True,
     )
     claim_id: Mapped[UUID | None] = mapped_column(
