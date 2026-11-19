@@ -255,7 +255,7 @@ def submit_human_review(
         if existing is not None:
             return _history_response_item(existing)
 
-    if verdict not in Verdict:
+    if verdict not in list(Verdict):
         raise HTTPException(status_code=422, detail="Invalid human verdict")
     if not explanation or len(explanation.strip()) < 10:
         raise HTTPException(status_code=422, detail="Reviewer explanation is required")
