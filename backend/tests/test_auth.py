@@ -683,6 +683,7 @@ def test_login_returns_503_when_database_not_configured() -> None:
     """When ANVEXA_DATABASE_URL is unset the login endpoint must return 503,
     not an opaque 500 Internal Server Error."""
     get_settings.cache_clear()
+    get_engine.cache_clear()
     rate_limiter.reset_all()
     application = create_app()
     # Do NOT override get_db — let the real dependency try to connect
@@ -695,11 +696,14 @@ def test_login_returns_503_when_database_not_configured() -> None:
     )
     assert response.status_code == 503
     assert "database" in response.json()["detail"].lower()
+    # Restore caches for subsequent tests
+    get_engine.cache_clear()
 
 
 def test_register_returns_503_when_database_not_configured() -> None:
     """Registration must also return 503 when the database is unreachable."""
     get_settings.cache_clear()
+    get_engine.cache_clear()
     rate_limiter.reset_all()
     application = create_app()
 
@@ -715,3 +719,5 @@ def test_register_returns_503_when_database_not_configured() -> None:
     )
     assert response.status_code == 503
     assert "database" in response.json()["detail"].lower()
+    # Restore caches for subsequent tests
+    get_engine.cache_clear()
