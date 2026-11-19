@@ -68,7 +68,6 @@ class ResearchSource(Base, UUIDPrimaryKey, TimestampMixin):
         nullable=False,
         default=dict,
     )
-    metadata = synonym("metadata_json")
 
     versions: Mapped[list[SourceVersion]] = relationship(
         back_populates="source",
@@ -127,7 +126,6 @@ class SourceVersion(Base, UUIDPrimaryKey, TimestampMixin):
         nullable=False,
         default=dict,
     )
-    metadata = synonym("metadata_json")
 
     source: Mapped[ResearchSource] = relationship(back_populates="versions")
     evidence_passages: Mapped[list[EvidencePassage]] = relationship(

@@ -19,7 +19,10 @@ class SourceVersionResponse(BaseModel):
     content_sha256: str | None = None
     published_at: datetime | None = None
     full_text_available: bool
-    metadata: dict[str, object] = Field(default_factory=dict)
+    metadata_json: dict[str, object] = Field(
+        default_factory=dict,
+        serialization_alias="metadata",
+    )
     created_at: datetime
 
 
@@ -36,7 +39,10 @@ class ResearchSourceResponse(BaseModel):
     abstract: str | None = None
     retrieval_status: RetrievalStatus
     is_retracted: bool
-    metadata: dict[str, object] = Field(default_factory=dict)
+    metadata_json: dict[str, object] = Field(
+        default_factory=dict,
+        serialization_alias="metadata",
+    )
     created_at: datetime
     versions: list[SourceVersionResponse] = Field(default_factory=list)
 
