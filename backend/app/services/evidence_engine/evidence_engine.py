@@ -22,6 +22,7 @@ from app.core.config import get_settings
 from app.core.embedding import EMBEDDING_DIMENSION, EMBEDDING_MODEL
 from app.models.document import Citation, Claim, Document, DocumentVersion
 from app.models.enums import DocumentStatus, EvidenceContentType
+from app.models.enums import SourceVersionType
 from app.models.research import (
     Embedding,
     EvidencePassage,
@@ -327,7 +328,7 @@ def _ensure_source_version(source: ResearchSource, db: Session) -> SourceVersion
         return version
     version = SourceVersion(
         source_id=source.id,
-        version_type="published",
+        version_type=SourceVersionType.PUBLISHED,
         version_url=source.source_url,
         content_sha256=hashlib.sha256(
             (source.doi or source.title).encode("utf-8")
