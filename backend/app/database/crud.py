@@ -5,9 +5,13 @@ from uuid import UUID
 from sqlalchemy import Select, inspect, select
 from sqlalchemy.orm import Session
 
-from backend.app.core.embedding import EMBEDDING_DIMENSION
+from backend.app.core.embedding import EMBEDDING_DIMENSION, EMBEDDING_MODEL
 from backend.app.database.base import Base
+from backend.app.models.audit import AuditLog
+from backend.app.models.document import Claim, Citation, Document
+from backend.app.models.enums import DocumentStatus
 from backend.app.models.research import Embedding, EvidencePassage
+from backend.app.models.verification import ReviewHistory, VerificationResult
 
 ModelT = TypeVar("ModelT", bound=Base)
 
@@ -54,8 +58,95 @@ def update_record(
 
 
 def delete_record(session: Session, record: ModelT) -> None:
+    if isinstance(record, (AuditLog, ReviewHistory, VerificationResult)):
+        raise ValueError(
+            "Historical verification and audit records cannot be deleted."
+        )
     session.delete(record)
     session.flush()
+
+
+def _validate_pagination(offset: int, limit: int) -> None:
+    if offset < 0:
+        raise ValueError("Pagination offset cannot be negative.")
+    if not 1 <= limit <= 100:
+        raise ValueError("Pagination limit must be between 1 and 100.")
+
+
+def list_documents(
+    session: Session,
+    user_id: UUID,
+    *,
+    offset: int = 0,
+    limit: int = 50,
+    processing_status: DocumentStatus | None = None,
+) -> list[Document]:
+    _validate_pagination(offset, limit)
+    statement = select(Document).where(Document.user_id == user_id)
+    if processing_status is not None:
+        statement = statement.where(
+            Document.processing_status == processing_status
+        )
+    statement = (
+        statement.order_by(Document.created_at.desc())
+        .offset(offset)
+        .limit(limit)
+    )
+    return list(session.scalars(statement).all())
+
+
+def get_claims_by_document(
+    session: Session,
+    document_id: UUID,
+    *,
+    offset: int = 0,
+    limit: int = 100,
+) -> list[Claim]:
+    _validate_pagination(offset, limit)
+    statement = (
+        select(Claim)
+        .where(Claim.document_id == document_id)
+        .order_by(Claim.created_at)
+        .offset(offset)
+        .limit(limit)
+    )
+    return list(session.scalars(statement).all())
+
+
+def get_citations_by_document(
+    session: Session,
+    document_id: UUID,
+    *,
+    offset: int = 0,
+    limit: int = 100,
+) -> list[Citation]:
+    _validate_pagination(offset, limit)
+    statement = (
+        select(Citation)
+        .where(Citation.document_id == document_id)
+        .order_by(Citation.created_at)
+        .offset(offset)
+        .limit(limit)
+    )
+    return list(session.scalars(statement).all())
+
+
+def get_verification_results_by_claim(
+    session: Session,
+    claim_id: UUID,
+    *,
+    offset: int = 0,
+    limit: int = 100,
+) -> list[VerificationResult]:
+    _validate_pagination(offset, limit)
+    statement = (
+        select(VerificationResult)
+        .where(VerificationResult.claim_id == claim_id)
+        .order_by(VerificationResult.created_at.desc())
+        .offset(offset)
+        .limit(limit)
+    )
+    return list(session.scalars(statement).all())
 
 
 def similar_evidence_query(
@@ -73,6 +164,7 @@ def similar_evidence_query(
     return (
         select(EvidencePassage)
         .join(Embedding)
+        .where(Embedding.model_name == EMBEDDING_MODEL)
         .order_by(distance)
         .limit(limit)
     )
