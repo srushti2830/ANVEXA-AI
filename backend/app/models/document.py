@@ -281,6 +281,7 @@ class Claim(Base, UUIDPrimaryKey, TimestampMixin):
         foreign_keys="Embedding.claim_id",
         cascade="all, delete-orphan",
         uselist=True,
+        back_populates="claim",
     )
 
 

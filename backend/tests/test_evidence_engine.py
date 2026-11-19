@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterator
 
 import pytest
+import pymupdf
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import Session
 
@@ -20,6 +21,7 @@ from app.services.evidence_engine.evidence_engine import (
     generate_embeddings,
     parse_html,
     parse_xml,
+    extract_pdf_text,
 )
 
 
@@ -78,6 +80,17 @@ def test_html_and_xml_parsing() -> None:
 
 def test_malformed_xml_returns_empty() -> None:
     assert parse_xml("<article><p>broken") == []
+
+
+def test_pdf_text_extraction() -> None:
+    pdf = pymupdf.open()
+    page = pdf.new_page()
+    page.insert_text((72, 72), "The enzyme activity increased by 12.5 units per minute.")
+    data = pdf.tobytes()
+    pdf.close()
+    pages = extract_pdf_text(data)
+    assert len(pages) == 1
+    assert "12.5 units" in pages[0][1]
 
 
 def test_cosine_similarity_and_dimension() -> None:

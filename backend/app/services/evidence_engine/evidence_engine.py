@@ -11,7 +11,7 @@ from typing import Iterable
 from uuid import UUID
 import xml.etree.ElementTree as ET
 
-import fitz
+import pymupdf
 import httpx
 from fastapi import HTTPException
 from sqlalchemy import select
@@ -185,7 +185,7 @@ def deduplicate_paragraph_tuples(
 
 def extract_pdf_text(data: bytes) -> list[tuple[int, str]]:
     try:
-        document = fitz.open(stream=data, filetype="pdf")
+        document = pymupdf.open(stream=data, filetype="pdf")
     except Exception as exc:
         logger.warning("Invalid evidence PDF: %s", type(exc).__name__)
         return []
