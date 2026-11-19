@@ -3,6 +3,21 @@ from enum import Enum
 from sqlalchemy import Enum as SQLAlchemyEnum
 
 
+class UserRole(str, Enum):
+    USER = "user"
+    REVIEWER = "reviewer"
+    ADMIN = "admin"
+
+    @classmethod
+    def _missing_(cls, value: object):
+        if isinstance(value, str):
+            normalized = value.strip().lower()
+            for member in cls:
+                if member.value == normalized:
+                    return member
+        return None
+
+
 class DocumentStatus(str, Enum):
     UPLOADED = "uploaded"
     PROCESSING = "processing"
