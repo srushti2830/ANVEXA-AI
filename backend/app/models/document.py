@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import (
@@ -35,7 +36,7 @@ from backend.app.models.mixins import TimestampMixin, UUIDPrimaryKey
 class Document(Base, UUIDPrimaryKey, TimestampMixin):
     __tablename__ = "documents"
     __table_args__ = (
-        CheckConstraint("size_bytes > 0", name="ck_documents_size_positive"),
+        CheckConstraint("file_size > 0", name="ck_documents_size_positive"),
         CheckConstraint(
             "length(file_hash) = 64",
             name="ck_documents_sha256_length",
@@ -219,8 +220,8 @@ class Claim(Base, UUIDPrimaryKey, TimestampMixin):
         Uuid(as_uuid=True),
         ForeignKey("document_pages.id", ondelete="SET NULL"),
     )
-    paragraph_index: Mapped[int | None] = mapped_column(Integer)
-    paragraph_number = synonym("paragraph_index")
+    paragraph_number: Mapped[int | None] = mapped_column(Integer)
+    paragraph_index = synonym("paragraph_number")
     page_number: Mapped[int | None] = mapped_column(Integer)
     original_text: Mapped[str] = mapped_column(Text, nullable=False)
     normalized_text: Mapped[str | None] = mapped_column(Text)
