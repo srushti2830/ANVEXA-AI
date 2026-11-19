@@ -14,17 +14,40 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+let refreshingPromise = null;
+
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
+  async (error) => {
+    const originalRequest = error.config;
+    if (error.response?.status !== 401 || originalRequest?.__retried) {
+      if (error.response?.status === 401) {
+        localStorage.removeItem("anvexa_access_token");
+        localStorage.removeItem("anvexa_refresh_token");
+        if (window.location.pathname !== "/login") window.location.assign("/login");
+      }
+      return Promise.reject(error);
+    }
+    const refreshToken = localStorage.getItem("anvexa_refresh_token");
+    if (!refreshToken) return Promise.reject(error);
+    try {
+      refreshingPromise ||= axios.post(`${API_BASE_URL}/auth/refresh`, {
+        refresh_token: refreshToken,
+      });
+      const response = await refreshingPromise;
+      refreshingPromise = null;
+      localStorage.setItem("anvexa_access_token", response.data.access_token);
+      localStorage.setItem("anvexa_refresh_token", response.data.refresh_token);
+      originalRequest.__retried = true;
+      originalRequest.headers.Authorization = `Bearer ${response.data.access_token}`;
+      return api(originalRequest);
+    } catch (refreshError) {
+      refreshingPromise = null;
       localStorage.removeItem("anvexa_access_token");
       localStorage.removeItem("anvexa_refresh_token");
-      if (window.location.pathname !== "/login") {
-        window.location.assign("/login");
-      }
+      if (window.location.pathname !== "/login") window.location.assign("/login");
+      return Promise.reject(refreshError);
     }
-    return Promise.reject(error);
   },
 );
 
