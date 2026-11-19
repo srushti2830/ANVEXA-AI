@@ -263,29 +263,37 @@ class Claim(Base, UUIDPrimaryKey, TimestampMixin):
 class Citation(Base, UUIDPrimaryKey, TimestampMixin):
     __tablename__ = "citations"
     __table_args__ = (
+        Index("ix_citations_document_id", "document_id"),
         Index("ix_citations_version", "document_version_id"),
         Index("ix_citations_doi", "doi"),
         Index("ix_citations_research_source", "research_source_id"),
+        ForeignKeyConstraint(
+            ["document_id", "document_version_id"],
+            ["document_versions.document_id", "document_versions.id"],
+            ondelete="CASCADE",
+            name="fk_citations_document_version",
+        ),
     )
 
-    document_version_id: Mapped[UUID] = mapped_column(
-        Uuid(as_uuid=True),
-        ForeignKey("document_versions.id", ondelete="CASCADE"),
-        nullable=False,
-    )
+    document_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    document_version_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
     research_source_id: Mapped[UUID | None] = mapped_column(
         Uuid(as_uuid=True),
         ForeignKey("research_sources.id", ondelete="SET NULL"),
     )
-    label: Mapped[str | None] = mapped_column(String(120))
-    style: Mapped[CitationStyle] = mapped_column(
+    reference_number: Mapped[str | None] = mapped_column(String(120))
+    label = synonym("reference_number")
+    citation_type: Mapped[CitationStyle] = mapped_column(
         enum_column(CitationStyle, "citation_style"),
         nullable=False,
         default=CitationStyle.UNKNOWN,
         server_default=text("'unknown'"),
     )
-    raw_text: Mapped[str] = mapped_column(Text, nullable=False)
-    title: Mapped[str | None] = mapped_column(String(1000))
+    style = synonym("citation_type")
+    citation_text: Mapped[str] = mapped_column(Text, nullable=False)
+    raw_text = synonym("citation_text")
+    publication_title: Mapped[str | None] = mapped_column(String(1000))
+    title = synonym("publication_title")
     authors: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     publication_year: Mapped[int | None] = mapped_column(Integer)
     doi: Mapped[str | None] = mapped_column(String(255))
