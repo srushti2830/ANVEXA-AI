@@ -11,6 +11,7 @@ from app.models.document import (
 )
 from app.models.enums import (
     CitationStyle,
+    CitationMappingStatus,
     ClaimType,
     ConfidenceLabel,
     DocumentStatus,
@@ -49,6 +50,7 @@ __all__ = [
     "AuditLog",
     "Citation",
     "CitationStyle",
+    "CitationMappingStatus",
     "Claim",
     "ClaimCitation",
     "ClaimType",
