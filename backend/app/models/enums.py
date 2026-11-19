@@ -90,6 +90,11 @@ class CitationMappingStatus(str, Enum):
     MISSING_REFERENCE = "missing_reference"
 
 
+class EvidenceContentType(str, Enum):
+    ABSTRACT = "abstract"
+    FULL_TEXT = "full_text"
+
+
 class SourceVersionType(str, Enum):
     PUBLISHED = "published"
     PREPRINT = "preprint"
