@@ -8,6 +8,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 SUPPORTED_EMBEDDING_MODELS = {
     "sentence-transformers/all-MiniLM-L6-v2": 384,
     "sentence-transformers/paraphrase-MiniLM-L3-v2": 384,
+    "sentence-transformers/all-mpnet-base-v2": 768,
 }
 
 

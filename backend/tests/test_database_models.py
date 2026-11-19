@@ -146,8 +146,13 @@ def test_embedding_model_and_dimension_are_validated_together() -> None:
         embedding_model="sentence-transformers/paraphrase-MiniLM-L3-v2",
         embedding_dimension=384,
     )
+    larger_model = Settings(
+        embedding_model="sentence-transformers/all-mpnet-base-v2",
+        embedding_dimension=768,
+    )
 
     assert settings.embedding_dimension == 384
+    assert larger_model.embedding_dimension == 768
     with pytest.raises(ValidationError, match="requires vector dimension"):
         Settings(embedding_model=EMBEDDING_MODEL, embedding_dimension=768)
 
