@@ -379,3 +379,170 @@ function DocumentDetail() {
     </>
   );
 }
+
+function ClaimWorkspace() {
+  const { id } = useParams();
+  const [claim, setClaim] = useState(null);
+  const [evidence, setEvidence] = useState([]);
+  const [sources, setSources] = useState([]);
+  const [verification, setVerification] = useState(null);
+  const [classification, setClassification] = useState(null);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    Promise.allSettled([
+      api.get(`/documents`, {}),
+      api.get(`/claims/${id}/evidence`),
+      api.get(`/claims/${id}/sources`),
+      api.get(`/claims/${id}/verification`),
+      api.get(`/claims/${id}/verdict`),
+    ]).then((responses) => {
+      const evidenceResponse = responses[1];
+      const sourceResponse = responses[2];
+      const verificationResponse = responses[3];
+      const classificationResponse = responses[4];
+      if (evidenceResponse.status === "fulfilled") setEvidence(evidenceResponse.value.data.evidence || []);
+      if (sourceResponse.status === "fulfilled") setSources(sourceResponse.value.data || []);
+      if (verificationResponse.status === "fulfilled") setVerification(verificationResponse.value.data);
+      if (classificationResponse.status === "fulfilled") setClassification(classificationResponse.value.data);
+    }).catch((err) => setError(errorMessage(err)));
+  }, [id]);
+  useEffect(() => {
+    api.get(`/claims/${id}/evidence`).catch(() => {});
+  }, [id]);
+  return (
+    <>
+      <PageHeader eyebrow="Claim workspace" title="Evidence analysis" />
+      <ErrorBox error={error} />
+      <div className="workspace-grid">
+        <section className="panel">
+          <div className="panel-heading"><h2>Claim</h2><span>{id}</span></div>
+          {classification ? (
+            <>
+              <h3>{classification.claim_id}</h3>
+              <div className="verdict-row">
+                <span>AI verdict</span><strong>{classification.ai_verdict}</strong>
+                <span>Final verdict</span><strong>{classification.final_verdict}</strong>
+              </div>
+              <p>{verification?.explanation || "Verification explanation unavailable."}</p>
+              {classification.limitations?.length > 0 && <div><h4>Limitations</h4><ul>{classification.limitations.map((item, index) => <li key={index}>{item}</li>)}</ul></div>}
+            </>
+          ) : <Empty title="No classified verdict" text="Run claim verification and verdict classification first." />}
+        </section>
+        <aside className="panel evidence-panel">
+          <div className="panel-heading"><h2>Evidence</h2><span>{evidence.length} passages</span></div>
+          {evidence.length === 0 ? <Empty title="No evidence" text="Evidence extraction has not returned passages for this claim." /> :
+            evidence.map((item) => (
+              <article className="evidence-card" key={item.evidence_id}>
+                <div><span className="status">{item.content_type}</span>{item.doi && <small>DOI {item.doi}</small>}</div>
+                <p>{item.evidence_text}</p>
+                <footer>{item.publication_title} · {item.section_name || "Section unavailable"} · Page {item.page_number || "—"}</footer>
+              </article>
+            ))}
+        </aside>
+      </div>
+      {sources.length > 0 && <section className="panel"><div className="panel-heading"><h2>Retrieved sources</h2></div><div className="source-grid">{sources.map((source) => (
+        <article className="source-card" key={source.id}><h3>{source.title}</h3><p>{source.authors?.join(", ") || "Authors unavailable"}</p><p>{source.publication_year || "Year unavailable"} · {source.doi || "No DOI"}</p>{source.source_url && <a href={source.source_url} target="_blank" rel="noreferrer">Open source</a>}</article>
+      ))}</div></section>}
+    </>
+  );
+}
+
+function Reviews() {
+  const [reviews, setReviews] = useState([]);
+  const [selected, setSelected] = useState(null);
+  const [error, setError] = useState("");
+  const [verdict, setVerdict] = useState("NEEDS_REVIEW");
+  const [explanation, setExplanation] = useState("");
+  const [busy, setBusy] = useState(false);
+  async function load() {
+    try {
+      const response = await api.get("/reviews/queue", { params: { page: 1, per_page: 50 } });
+      setReviews(response.data.reviews || []);
+    } catch (err) { setError(errorMessage(err)); }
+  }
+  useEffect(() => { load(); }, []);
+  async function open(review) {
+    setError("");
+    try {
+      const response = await api.get(`/reviews/${review.review_id}`);
+      setSelected(response.data);
+    } catch (err) { setError(errorMessage(err)); }
+  }
+  async function submit() {
+    if (!selected) return;
+    setBusy(true);
+    setError("");
+    try {
+      await api.post(`/reviews/${selected.review_id}/submit`, { verdict, explanation });
+      await load();
+      setSelected(null);
+      setExplanation("");
+    } catch (err) { setError(errorMessage(err)); }
+    finally { setBusy(false); }
+  }
+  async function investigate() {
+    if (!selected) return;
+    setBusy(true);
+    try {
+      await api.post(`/reviews/${selected.review_id}/request-investigation`, {
+        explanation: explanation || "Further investigation is required to assess this claim.",
+      });
+      await load();
+    } catch (err) { setError(errorMessage(err)); }
+    finally { setBusy(false); }
+  }
+  return (
+    <>
+      <PageHeader eyebrow="Human review" title="Review queue" />
+      <ErrorBox error={error} />
+      <div className="review-layout">
+        <section className="panel review-list-panel">
+          {reviews.length === 0 ? <Empty title="No cases awaiting review" text="AI and classified cases that require review will appear here." /> :
+            reviews.map((review) => (
+              <button className="review-list-item" key={review.review_id} onClick={() => open(review)}>
+                <span className="status">{review.ai_verdict}</span>
+                <strong>{review.claim_text}</strong>
+                <small>{review.document_title}</small>
+              </button>
+            ))}
+        </section>
+        {selected && <section className="panel review-detail">
+          <p className="eyebrow">{selected.document_title}</p>
+          <h2>{selected.claim_text}</h2>
+          <div className="verdict-row"><span>AI verdict</span><strong>{selected.ai_verdict}</strong></div>
+          <p>{selected.ai_explanation}</p>
+          <h3>Supporting evidence</h3>
+          {selected.supporting_evidence.length === 0 ? <p className="muted">No supporting evidence was linked.</p> :
+            selected.supporting_evidence.map((item) => <article className="evidence-card" key={item.evidence_id}><p>{item.evidence_text}</p><footer>{item.publication_title} · {item.doi || "No DOI"}</footer></article>)}
+          <h3>Contradicting evidence</h3>
+          {selected.contradicting_evidence.length === 0 ? <p className="muted">No contradicting evidence was linked.</p> :
+            selected.contradicting_evidence.map((item) => <article className="evidence-card" key={item.evidence_id}><p>{item.evidence_text}</p><footer>{item.publication_title}</footer></article>)}
+          <label>Human verdict
+            <select value={verdict} onChange={(event) => setVerdict(event.target.value)}>
+              {verdictLabels.map((item) => <option key={item}>{item}</option>)}
+            </select>
+          </label>
+          <label>Reviewer explanation<textarea rows="5" value={explanation} onChange={(event) => setExplanation(event.target.value)} /></label>
+          <div className="header-actions">
+            <button className="button secondary" disabled={busy} onClick={investigate}>Request investigation</button>
+            <button className="button" disabled={busy} onClick={submit}>Submit human verdict</button>
+          </div>
+        </section>}
+      </div>
+    </>
+  );
+}
+
+function Settings() {
+  const [user, setUser] = useState(null);
+  useEffect(() => { api.get("/auth/me").then((response) => setUser(response.data)).catch(() => {}); }, []);
+  return (
+    <>
+      <PageHeader eyebrow="Account" title="Settings" />
+      <section className="panel settings-card">
+        <h2>Profile</h2>
+        {user ? <><p><strong>Name</strong><span>{user.full_name}</span></p><p><strong>Email</strong><span>{user.email}</span></p><p><strong>Role</strong><span>{user.role}</span></p></> : <Loading />}
+      </section>
+    </>
+  );
+}
