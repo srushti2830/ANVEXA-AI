@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-from backend.app.services.document_storage.storage_service import (
+from app.services.document_storage.storage_service import (
     StorageBackend,
     StorageError,
 )

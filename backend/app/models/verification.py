@@ -23,8 +23,8 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship, synonym
 
-from backend.app.database.base import Base
-from backend.app.models.enums import (
+from app.database.base import Base
+from app.models.enums import (
     ConfidenceLabel,
     EvidenceRelation,
     IssueCertainty,
@@ -37,7 +37,7 @@ from backend.app.models.enums import (
     VerificationStatus,
     enum_column,
 )
-from backend.app.models.mixins import TimestampMixin, UUIDPrimaryKey
+from app.models.mixins import TimestampMixin, UUIDPrimaryKey
 
 
 review_evidence = Table(

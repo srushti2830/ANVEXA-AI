@@ -2,7 +2,7 @@ from collections.abc import Generator
 
 from sqlalchemy.orm import Session, sessionmaker
 
-from backend.app.database.connection import get_engine
+from app.database.connection import get_engine
 
 SessionLocal = sessionmaker(autoflush=False, expire_on_commit=False)
 

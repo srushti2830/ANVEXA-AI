@@ -7,8 +7,8 @@ from fastapi import HTTPException, status
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from backend.app.core.config import Settings, get_settings
-from backend.app.core.security import (
+from app.core.config import Settings, get_settings
+from app.core.security import (
     create_access_token,
     generate_refresh_token,
     hash_password,
@@ -17,16 +17,16 @@ from backend.app.core.security import (
     validate_password_strength,
     verify_password,
 )
-from backend.app.models.enums import UserRole
-from backend.app.models.refresh_token import RefreshToken
-from backend.app.models.user import User
-from backend.app.schemas.auth import (
+from app.models.enums import UserRole
+from app.models.refresh_token import RefreshToken
+from app.models.user import User
+from app.schemas.auth import (
     ChangePasswordRequest,
     LoginRequest,
     RegisterRequest,
     TokenResponse,
 )
-from backend.app.schemas.user import UserUpdate
+from app.schemas.user import UserUpdate
 
 
 def register_user(

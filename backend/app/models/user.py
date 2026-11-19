@@ -4,9 +4,9 @@ import sqlalchemy as sa
 from sqlalchemy import Boolean, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship, synonym
 
-from backend.app.database.base import Base
-from backend.app.models.enums import UserRole, enum_column
-from backend.app.models.mixins import TimestampMixin, UUIDPrimaryKey
+from app.database.base import Base
+from app.models.enums import UserRole, enum_column
+from app.models.mixins import TimestampMixin, UUIDPrimaryKey
 
 
 class User(Base, UUIDPrimaryKey, TimestampMixin):

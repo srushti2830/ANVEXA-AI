@@ -7,19 +7,19 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query, UploadFile, File, status
 from sqlalchemy.orm import Session
 
-from backend.app.api.dependencies import get_current_user
-from backend.app.core.config import get_settings
-from backend.app.database.session import get_db
-from backend.app.models.enums import DocumentStatus
-from backend.app.models.user import User
-from backend.app.schemas.document import (
+from app.api.dependencies import get_current_user
+from app.core.config import get_settings
+from app.database.session import get_db
+from app.models.enums import DocumentStatus
+from app.models.user import User
+from app.schemas.document import (
     DocumentListResponse,
     DocumentQueryParams,
     DocumentResponse,
     DocumentStatusResponse,
     DocumentUploadResponse,
 )
-from backend.app.services.document_service import (
+from app.services.document_service import (
     delete_user_document,
     get_document_status,
     get_user_document,

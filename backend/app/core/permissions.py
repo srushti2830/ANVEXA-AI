@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from enum import Enum
 
-from backend.app.models.enums import UserRole
+from app.models.enums import UserRole
 
 
 class Permission(str, Enum):

@@ -6,15 +6,15 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from backend.app.api.dependencies import (
+from app.api.dependencies import (
     get_current_user,
     require_role,
     verify_resource_ownership,
 )
-from backend.app.database.session import get_db
-from backend.app.models.enums import UserRole
-from backend.app.models.user import User
-from backend.app.schemas.user import (
+from app.database.session import get_db
+from app.models.enums import UserRole
+from app.models.user import User
+from app.schemas.user import (
     AdminRoleUpdate,
     AdminStatusUpdate,
     UserResponse,

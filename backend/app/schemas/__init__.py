@@ -1,4 +1,4 @@
-from backend.app.schemas.auth import (
+from app.schemas.auth import (
     ChangePasswordRequest,
     LoginRequest,
     MessageResponse,
@@ -6,7 +6,7 @@ from backend.app.schemas.auth import (
     RegisterRequest,
     TokenResponse,
 )
-from backend.app.schemas.document import (
+from app.schemas.document import (
     DocumentListResponse,
     DocumentQueryParams,
     DocumentResponse,
@@ -14,7 +14,7 @@ from backend.app.schemas.document import (
     DocumentUploadResponse,
     PaginationMeta,
 )
-from backend.app.schemas.user import (
+from app.schemas.user import (
     AdminRoleUpdate,
     AdminStatusUpdate,
     UserBase,

@@ -6,10 +6,10 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.pool import StaticPool
 
-from backend.app.core.config import Settings
-from backend.app.database import health as database_health
-from backend.app.database.session import SessionLocal, get_db
-from backend.app.main import create_app
+from app.core.config import Settings
+from app.database import health as database_health
+from app.database.session import SessionLocal, get_db
+from app.main import create_app
 
 
 def get_response(app: FastAPI, path: str) -> httpx.Response:
@@ -31,7 +31,7 @@ def test_session_dependency_uses_injected_engine(monkeypatch) -> None:
         poolclass=StaticPool,
     )
     monkeypatch.setattr(
-        "backend.app.database.session.get_engine",
+        "app.database.session.get_engine",
         lambda: engine,
     )
     dependency = get_db()

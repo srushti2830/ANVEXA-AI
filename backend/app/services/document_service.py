@@ -16,11 +16,11 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from backend.app.core.config import Settings, get_settings
-from backend.app.models.document import Document
-from backend.app.models.enums import DocumentStatus
-from backend.app.models.user import User
-from backend.app.schemas.document import (
+from app.core.config import Settings, get_settings
+from app.models.document import Document
+from app.models.enums import DocumentStatus
+from app.models.user import User
+from app.schemas.document import (
     DocumentListResponse,
     DocumentQueryParams,
     DocumentResponse,
@@ -28,8 +28,8 @@ from backend.app.schemas.document import (
     DocumentUploadResponse,
     PaginationMeta,
 )
-from backend.app.services.document_storage.local_storage import LocalStorageBackend
-from backend.app.services.document_storage.storage_service import (
+from app.services.document_storage.local_storage import LocalStorageBackend
+from app.services.document_storage.storage_service import (
     StorageBackend,
     StorageError,
 )
@@ -325,7 +325,7 @@ def get_user_document(
         )
 
     # Ownership check — admins can access any document
-    from backend.app.api.dependencies import verify_resource_ownership
+    from app.api.dependencies import verify_resource_ownership
     verify_resource_ownership(doc.user_id, current_user)
 
     return DocumentResponse.model_validate(doc)
@@ -347,7 +347,7 @@ def get_document_status(
             detail="Document not found",
         )
 
-    from backend.app.api.dependencies import verify_resource_ownership
+    from app.api.dependencies import verify_resource_ownership
     verify_resource_ownership(doc.user_id, current_user)
 
     return DocumentStatusResponse(
@@ -373,7 +373,7 @@ def delete_user_document(
             detail="Document not found",
         )
 
-    from backend.app.api.dependencies import verify_resource_ownership
+    from app.api.dependencies import verify_resource_ownership
     verify_resource_ownership(doc.user_id, current_user)
 
     storage_key = doc.storage_path

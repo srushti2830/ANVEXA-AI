@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 from sqlalchemy import text
 
-from backend.app.database.connection import get_engine
+from app.database.connection import get_engine
 
 
 @dataclass(frozen=True)

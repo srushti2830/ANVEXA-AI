@@ -3,8 +3,8 @@ import asyncio
 from fastapi import FastAPI
 import httpx
 
-from backend.app.core.config import Settings
-from backend.app.main import create_app
+from app.core.config import Settings
+from app.main import create_app
 
 
 def get_response(app: FastAPI, path: str) -> httpx.Response:

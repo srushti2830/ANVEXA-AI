@@ -24,10 +24,10 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship, synonym
 
-from backend.app.core.embedding import EMBEDDING_DIMENSION, EMBEDDING_MODEL
-from backend.app.database.base import Base
-from backend.app.models.enums import RetrievalStatus, SourceVersionType, enum_column
-from backend.app.models.mixins import TimestampMixin, UUIDPrimaryKey
+from app.core.embedding import EMBEDDING_DIMENSION, EMBEDDING_MODEL
+from app.database.base import Base
+from app.models.enums import RetrievalStatus, SourceVersionType, enum_column
+from app.models.mixins import TimestampMixin, UUIDPrimaryKey
 
 
 class ResearchSource(Base, UUIDPrimaryKey, TimestampMixin):

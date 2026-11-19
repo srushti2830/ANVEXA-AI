@@ -3,7 +3,7 @@ import logging
 from fastapi import APIRouter, HTTPException
 from sqlalchemy.exc import SQLAlchemyError
 
-from backend.app.database.health import check_database_health
+from app.database.health import check_database_health
 
 logger = logging.getLogger(__name__)
 router = APIRouter()

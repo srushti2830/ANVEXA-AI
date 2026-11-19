@@ -11,18 +11,18 @@ from sqlalchemy import create_engine, event
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
-from backend.app.core.config import Settings, get_settings
-from backend.app.core.security import (
+from app.core.config import Settings, get_settings
+from app.core.security import (
     create_access_token,
     hash_password,
     rate_limiter,
 )
-from backend.app.database.base import Base
-from backend.app.database.session import get_db
-from backend.app.main import create_app
-from backend.app.models.enums import UserRole
-from backend.app.models.refresh_token import RefreshToken
-from backend.app.models.user import User
+from app.database.base import Base
+from app.database.session import get_db
+from app.main import create_app
+from app.models.enums import UserRole
+from app.models.refresh_token import RefreshToken
+from app.models.user import User
 
 
 @pytest.fixture(autouse=True)

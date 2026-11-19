@@ -8,11 +8,11 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from backend.app.core.config import get_settings
-from backend.app.core.security import decode_access_token
-from backend.app.database.session import get_db
-from backend.app.models.enums import UserRole
-from backend.app.models.user import User
+from app.core.config import get_settings
+from app.core.security import decode_access_token
+from app.database.session import get_db
+from app.models.enums import UserRole
+from app.models.user import User
 
 settings = get_settings()
 

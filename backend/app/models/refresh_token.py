@@ -7,8 +7,8 @@ import sqlalchemy as sa
 from sqlalchemy import DateTime, ForeignKey, Index, String, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from backend.app.database.base import Base
-from backend.app.models.mixins import UUIDPrimaryKey
+from app.database.base import Base
+from app.models.mixins import UUIDPrimaryKey
 
 
 class RefreshToken(Base, UUIDPrimaryKey):

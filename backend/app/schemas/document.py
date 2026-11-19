@@ -7,7 +7,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from backend.app.models.enums import DocumentStatus
+from app.models.enums import DocumentStatus
 
 
 # ---------------------------------------------------------------------------

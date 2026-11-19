@@ -3,10 +3,10 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.orm import Session
 
-from backend.app.api.dependencies import get_current_user
-from backend.app.database.session import get_db
-from backend.app.models.user import User
-from backend.app.schemas.auth import (
+from app.api.dependencies import get_current_user
+from app.database.session import get_db
+from app.models.user import User
+from app.schemas.auth import (
     ChangePasswordRequest,
     LoginRequest,
     MessageResponse,
@@ -14,8 +14,8 @@ from backend.app.schemas.auth import (
     RegisterRequest,
     TokenResponse,
 )
-from backend.app.schemas.user import UserResponse, UserUpdate
-from backend.app.services.auth_service import (
+from app.schemas.user import UserResponse, UserUpdate
+from app.services.auth_service import (
     authenticate_user,
     change_user_password,
     create_user_tokens,

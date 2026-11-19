@@ -5,13 +5,13 @@ from uuid import UUID
 from sqlalchemy import Select, inspect, select
 from sqlalchemy.orm import Session
 
-from backend.app.core.embedding import EMBEDDING_DIMENSION, EMBEDDING_MODEL
-from backend.app.database.base import Base
-from backend.app.models.audit import AuditLog
-from backend.app.models.document import Claim, Citation, Document
-from backend.app.models.enums import DocumentStatus
-from backend.app.models.research import Embedding, EvidencePassage
-from backend.app.models.verification import ReviewHistory, VerificationResult
+from app.core.embedding import EMBEDDING_DIMENSION, EMBEDDING_MODEL
+from app.database.base import Base
+from app.models.audit import AuditLog
+from app.models.document import Claim, Citation, Document
+from app.models.enums import DocumentStatus
+from app.models.research import Embedding, EvidencePassage
+from app.models.verification import ReviewHistory, VerificationResult
 
 ModelT = TypeVar("ModelT", bound=Base)
 

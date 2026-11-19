@@ -19,8 +19,8 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.orm import synonym
 
-from backend.app.database.base import Base
-from backend.app.models.mixins import UUIDPrimaryKey
+from app.database.base import Base
+from app.models.mixins import UUIDPrimaryKey
 
 
 class AuditLog(Base, UUIDPrimaryKey):

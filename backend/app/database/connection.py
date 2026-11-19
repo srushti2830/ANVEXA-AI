@@ -2,7 +2,7 @@ from functools import lru_cache
 
 from sqlalchemy import Engine, create_engine
 
-from backend.app.core.config import get_settings
+from app.core.config import get_settings
 
 
 def create_database_engine(

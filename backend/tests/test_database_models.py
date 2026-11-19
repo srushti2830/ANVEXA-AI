@@ -10,10 +10,10 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from pydantic import ValidationError
 
-from backend.app.core.embedding import EMBEDDING_DIMENSION, EMBEDDING_MODEL
-from backend.app.core.config import Settings
-from backend.app.database.base import Base
-from backend.app.database.crud import (
+from app.core.embedding import EMBEDDING_DIMENSION, EMBEDDING_MODEL
+from app.core.config import Settings
+from app.database.base import Base
+from app.database.crud import (
     create_record,
     delete_record,
     get_claims_by_document,
@@ -24,10 +24,10 @@ from backend.app.database.crud import (
     similar_evidence_query,
     update_record,
 )
-from backend.app.database.connection import create_database_engine
-from backend.app.database.session import SessionLocal, get_db
-from backend.app.database import connection
-from backend.app.models import (
+from app.database.connection import create_database_engine
+from app.database.session import SessionLocal, get_db
+from app.database import connection
+from app.models import (
     Claim,
     Citation,
     Document,
@@ -38,7 +38,7 @@ from backend.app.models import (
     User,
     VerificationResult,
 )
-from backend.app.models.enums import (
+from app.models.enums import (
     CitationStyle,
     ClaimType,
     DocumentStatus,
@@ -161,7 +161,7 @@ def test_embedding_model_and_dimension_are_validated_together() -> None:
 def test_get_db_yields_a_session_bound_to_the_lazy_engine(monkeypatch) -> None:
     engine = create_engine("sqlite+pysqlite:///:memory:")
     monkeypatch.setattr(
-        "backend.app.database.session.get_engine",
+        "app.database.session.get_engine",
         lambda: engine,
     )
     dependency = get_db()

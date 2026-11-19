@@ -17,20 +17,20 @@ from sqlalchemy import create_engine, event
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
-from backend.app.core.config import get_settings
-from backend.app.core.security import create_access_token, hash_password, rate_limiter
-from backend.app.database.base import Base
-from backend.app.database.session import get_db
-from backend.app.main import create_app
-from backend.app.models.document import Document
-from backend.app.models.enums import DocumentStatus, UserRole
-from backend.app.models.user import User
-from backend.app.services.document_service import (
+from app.core.config import get_settings
+from app.core.security import create_access_token, hash_password, rate_limiter
+from app.database.base import Base
+from app.database.session import get_db
+from app.main import create_app
+from app.models.document import Document
+from app.models.enums import DocumentStatus, UserRole
+from app.models.user import User
+from app.services.document_service import (
     reset_storage_backend,
     set_storage_backend,
 )
-from backend.app.services.document_storage.local_storage import LocalStorageBackend
-from backend.app.services.document_storage.storage_service import (
+from app.services.document_storage.local_storage import LocalStorageBackend
+from app.services.document_storage.storage_service import (
     StorageBackend,
     StorageError,
 )

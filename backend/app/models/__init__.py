@@ -1,7 +1,7 @@
 """SQLAlchemy entities used by the application and Alembic."""
 
-from backend.app.models.audit import AuditLog, UserFeedback
-from backend.app.models.document import (
+from app.models.audit import AuditLog, UserFeedback
+from app.models.document import (
     Claim,
     ClaimCitation,
     Citation,
@@ -9,7 +9,7 @@ from backend.app.models.document import (
     DocumentPage,
     DocumentVersion,
 )
-from backend.app.models.enums import (
+from app.models.enums import (
     CitationStyle,
     ClaimType,
     ConfidenceLabel,
@@ -28,15 +28,15 @@ from backend.app.models.enums import (
     Verdict,
     VerificationStatus,
 )
-from backend.app.models.refresh_token import RefreshToken
-from backend.app.models.research import (
+from app.models.refresh_token import RefreshToken
+from app.models.research import (
     Embedding,
     EvidencePassage,
     ResearchSource,
     SourceVersion,
 )
-from backend.app.models.user import User
-from backend.app.models.verification import (
+from app.models.user import User
+from app.models.verification import (
     ProcessingJob,
     ReferenceIssue,
     Report,

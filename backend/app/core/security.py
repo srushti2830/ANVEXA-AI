@@ -17,7 +17,7 @@ from argon2.exceptions import (
 from fastapi import HTTPException, status
 import jwt
 
-from backend.app.core.config import Settings, get_settings
+from app.core.config import Settings, get_settings
 
 # Argon2id password hasher configuration (OWASP recommended minimums)
 _password_hasher = argon2.PasswordHasher(

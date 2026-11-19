@@ -3,9 +3,9 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-from backend.app.core.config import get_settings
-from backend.app.database.base import Base
-from backend.app.models import __all__ as _registered_models
+from app.core.config import get_settings
+from app.database.base import Base
+from app.models import __all__ as _registered_models
 
 config = context.config
 settings = get_settings()
