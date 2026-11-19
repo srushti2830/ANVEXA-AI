@@ -382,13 +382,23 @@ def build_overview_analytics(user: User, db: Session) -> dict:
         )
         .distinct()
     ).scalars().all()) if document_ids else []
-    evidence_count = len(list(db.execute(
-        select(EvidencePassage)
-        .where(EvidencePassage.source_id.in_(source_ids))
-    ).scalars().all())) if source_ids else 0
     claim_ids = list(db.execute(
         select(Claim.id).where(Claim.document_id.in_(document_ids))
     ).scalars().all()) if document_ids else []
+    passage_source_ids = list(db.execute(
+        select(EvidencePassage.source_id)
+        .where(EvidencePassage.claim_id.in_(claim_ids))
+        .distinct()
+    ).scalars().all()) if claim_ids else []
+    source_ids = list(dict.fromkeys(source_ids + passage_source_ids))
+    evidence_count = len(list(db.execute(
+        select(EvidencePassage)
+        .where(
+            EvidencePassage.claim_id.in_(claim_ids)
+            if claim_ids
+            else EvidencePassage.source_id.in_(source_ids)
+        )
+    ).scalars().all())) if claim_ids or source_ids else 0
     results = list(db.execute(
         select(VerificationResult)
         .where(VerificationResult.claim_id.in_(claim_ids))
