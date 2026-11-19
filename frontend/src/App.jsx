@@ -70,6 +70,7 @@ function Layout({ children }) {
   const links = [
     ["/app/dashboard", "Dashboard"],
     ["/app/documents", "Documents"],
+    ["/app/sources", "Sources"],
     ["/app/reviews", "Human review"],
   ];
   return (
