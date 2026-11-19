@@ -21,6 +21,9 @@ from app.api.endpoints.verdicts import claim_router as claim_verdict_router
 from app.api.endpoints.verdicts import document_router as document_verdict_router
 from app.api.endpoints.reviews import router as reviews_router
 from app.api.endpoints.reviews import document_router as document_reviews_router
+from app.api.endpoints.reports import document_router as document_reports_router
+from app.api.endpoints.reports import analytics_router
+from app.api.endpoints.reports import claims_router as claim_reports_router
 
 api_router = APIRouter()
 api_router.include_router(health_router)
@@ -44,3 +47,6 @@ api_router.include_router(claim_verdict_router)
 api_router.include_router(document_verdict_router)
 api_router.include_router(reviews_router)
 api_router.include_router(document_reviews_router)
+api_router.include_router(document_reports_router)
+api_router.include_router(analytics_router)
+api_router.include_router(claim_reports_router)

@@ -18,3 +18,5 @@ Pillow>=10.0
 httpx>=0.27,<1.0
 # Phase 9: semantic evidence embeddings
 sentence-transformers>=3.4,<6.0
+# Phase 13: PDF reports
+reportlab>=4.2,<5.0
