@@ -158,6 +158,7 @@ class ReviewStatus(str, Enum):
 class ReportFormat(str, Enum):
     PDF = "pdf"
     CSV = "csv"
+    JSON = "json"
 
 
 class ProcessingJobType(str, Enum):

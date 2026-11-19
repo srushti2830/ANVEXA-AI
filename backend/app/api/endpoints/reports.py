@@ -5,7 +5,7 @@ from __future__ import annotations
 from json import dumps
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
@@ -116,7 +116,7 @@ def get_document_json_report(
             owner_id=current_user.id,
             document_id=document.id,
             document_version_id=version.id,
-            format=ReportFormat.CSV,
+            format=ReportFormat.JSON,
             status=ProcessingStatus.COMPLETED,
             generated_at=report["generated_at"],
         ))
