@@ -20,8 +20,9 @@ def upgrade() -> None:
     sa.Column('authors', sa.JSON(), nullable=False),
     sa.Column('publication_year', sa.Integer(), nullable=True),
     sa.Column('journal', sa.String(length=500), nullable=True),
-    sa.Column('canonical_url', sa.String(length=2048), nullable=True),
+    sa.Column('source_url', sa.String(length=2048), nullable=True),
     sa.Column('abstract', sa.Text(), nullable=True),
+    sa.Column('retrieval_status', sa.Enum('pending', 'metadata_only', 'full_text_available', 'unavailable', 'failed', name='research_source_retrieval_status', native_enum=False, create_constraint=True), server_default=sa.text("'pending'"), nullable=False),
     sa.Column('is_retracted', sa.Boolean(), server_default=sa.text('false'), nullable=False),
     sa.Column('metadata', sa.JSON(), nullable=False),
     sa.Column('id', sa.Uuid(), nullable=False),
@@ -32,7 +33,7 @@ def upgrade() -> None:
     op.create_table('users',
     sa.Column('email', sa.String(length=320), nullable=False),
     sa.Column('hashed_password', sa.String(length=255), nullable=False),
-    sa.Column('display_name', sa.String(length=200), nullable=False),
+    sa.Column('full_name', sa.String(length=200), nullable=False),
     sa.Column('role', sa.Enum('user', 'reviewer', 'admin', name='user_role', native_enum=False, create_constraint=True), server_default=sa.text("'user'"), nullable=False),
     sa.Column('is_active', sa.Boolean(), server_default=sa.text('true'), nullable=False),
     sa.Column('id', sa.Uuid(), nullable=False),
@@ -42,33 +43,34 @@ def upgrade() -> None:
     sa.UniqueConstraint('email', name='uq_users_email')
     )
     op.create_table('audit_logs',
-    sa.Column('actor_id', sa.Uuid(), nullable=True),
+    sa.Column('user_id', sa.Uuid(), nullable=True),
     sa.Column('action', sa.String(length=120), nullable=False),
-    sa.Column('target_type', sa.String(length=120), nullable=False),
-    sa.Column('target_id', sa.Uuid(), nullable=True),
+    sa.Column('resource_type', sa.String(length=120), nullable=False),
+    sa.Column('resource_id', sa.Uuid(), nullable=True),
     sa.Column('details', sa.JSON(), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('id', sa.Uuid(), nullable=False),
-    sa.ForeignKeyConstraint(['actor_id'], ['users.id'], ondelete='SET NULL'),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='SET NULL'),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('documents',
-    sa.Column('owner_id', sa.Uuid(), nullable=False),
+    sa.Column('user_id', sa.Uuid(), nullable=False),
     sa.Column('title', sa.String(length=500), nullable=False),
-    sa.Column('original_filename', sa.String(length=255), nullable=False),
-    sa.Column('storage_key', sa.String(length=1024), nullable=False),
-    sa.Column('content_sha256', sa.String(length=64), nullable=False),
-    sa.Column('media_type', sa.String(length=100), nullable=False),
-    sa.Column('size_bytes', sa.BigInteger(), nullable=False),
-    sa.Column('status', sa.Enum('uploaded', 'processing', 'ready', 'failed', name='document_status', native_enum=False, create_constraint=True), server_default=sa.text("'uploaded'"), nullable=False),
+    sa.Column('filename', sa.String(length=255), nullable=False),
+    sa.Column('storage_path', sa.String(length=1024), nullable=False),
+    sa.Column('file_hash', sa.String(length=64), nullable=False),
+    sa.Column('file_type', sa.String(length=100), nullable=False),
+    sa.Column('file_size', sa.BigInteger(), nullable=False),
+    sa.Column('processing_status', sa.Enum('uploaded', 'processing', 'ready', 'failed', name='document_status', native_enum=False, create_constraint=True), server_default=sa.text("'uploaded'"), nullable=False),
+    sa.Column('uploaded_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('id', sa.Uuid(), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-    sa.CheckConstraint('length(content_sha256) = 64', name='ck_documents_sha256_length'),
-    sa.CheckConstraint('size_bytes > 0', name='ck_documents_size_positive'),
-    sa.ForeignKeyConstraint(['owner_id'], ['users.id'], ondelete='CASCADE'),
+    sa.CheckConstraint('file_size > 0', name='ck_documents_size_positive'),
+    sa.CheckConstraint('length(file_hash) = 64', name='ck_documents_sha256_length'),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('owner_id', 'content_sha256', name='uq_documents_owner_content')
+    sa.UniqueConstraint('user_id', 'file_hash', name='uq_documents_user_file_hash')
     )
     op.create_table('source_versions',
     sa.Column('source_id', sa.Uuid(), nullable=False),
@@ -83,7 +85,8 @@ def upgrade() -> None:
     sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.ForeignKeyConstraint(['source_id'], ['research_sources.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('source_id', 'content_sha256', name='uq_source_versions_content')
+    sa.UniqueConstraint('source_id', 'content_sha256', name='uq_source_versions_content'),
+    sa.UniqueConstraint('source_id', 'id', name='uq_source_versions_source_id')
     )
     op.create_table('document_versions',
     sa.Column('document_id', sa.Uuid(), nullable=False),
@@ -96,31 +99,36 @@ def upgrade() -> None:
     sa.CheckConstraint('version_number > 0', name='ck_document_versions_positive'),
     sa.ForeignKeyConstraint(['document_id'], ['documents.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('document_id', 'id', name='uq_document_versions_document_id'),
     sa.UniqueConstraint('document_id', 'version_number', name='uq_document_versions_number')
     )
     op.create_table('evidence_passages',
+    sa.Column('source_id', sa.Uuid(), nullable=False),
     sa.Column('source_version_id', sa.Uuid(), nullable=False),
     sa.Column('passage_index', sa.Integer(), nullable=False),
-    sa.Column('text', sa.Text(), nullable=False),
-    sa.Column('section', sa.String(length=300), nullable=True),
+    sa.Column('passage_text', sa.Text(), nullable=False),
+    sa.Column('section_name', sa.String(length=300), nullable=True),
     sa.Column('page_number', sa.Integer(), nullable=True),
     sa.Column('location', sa.String(length=500), nullable=True),
+    sa.Column('relevance_score', sa.Float(), nullable=True),
     sa.Column('id', sa.Uuid(), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.CheckConstraint('page_number IS NULL OR page_number > 0', name='ck_evidence_passages_page_positive'),
     sa.CheckConstraint('passage_index >= 0', name='ck_evidence_passages_index'),
-    sa.ForeignKeyConstraint(['source_version_id'], ['source_versions.id'], ondelete='CASCADE'),
+    sa.CheckConstraint('relevance_score IS NULL OR (relevance_score >= 0 AND relevance_score <= 1)', name='ck_evidence_passages_relevance'),
+    sa.ForeignKeyConstraint(['source_id', 'source_version_id'], ['source_versions.source_id', 'source_versions.id'], name='fk_evidence_passages_source_version', ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('source_version_id', 'passage_index', name='uq_evidence_passages_version_index')
     )
     op.create_table('citations',
+    sa.Column('document_id', sa.Uuid(), nullable=False),
     sa.Column('document_version_id', sa.Uuid(), nullable=False),
     sa.Column('research_source_id', sa.Uuid(), nullable=True),
-    sa.Column('label', sa.String(length=120), nullable=True),
-    sa.Column('style', sa.Enum('numeric', 'author_year', 'superscript', 'unknown', name='citation_style', native_enum=False, create_constraint=True), server_default=sa.text("'unknown'"), nullable=False),
-    sa.Column('raw_text', sa.Text(), nullable=False),
-    sa.Column('title', sa.String(length=1000), nullable=True),
+    sa.Column('reference_number', sa.String(length=120), nullable=True),
+    sa.Column('citation_type', sa.Enum('numeric', 'author_year', 'superscript', 'unknown', name='citation_style', native_enum=False, create_constraint=True), server_default=sa.text("'unknown'"), nullable=False),
+    sa.Column('citation_text', sa.Text(), nullable=False),
+    sa.Column('publication_title', sa.String(length=1000), nullable=True),
     sa.Column('authors', sa.JSON(), nullable=False),
     sa.Column('publication_year', sa.Integer(), nullable=True),
     sa.Column('doi', sa.String(length=255), nullable=True),
@@ -130,20 +138,21 @@ def upgrade() -> None:
     sa.Column('id', sa.Uuid(), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-    sa.ForeignKeyConstraint(['document_version_id'], ['document_versions.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['document_id', 'document_version_id'], ['document_versions.document_id', 'document_versions.id'], name='fk_citations_document_version', ondelete='CASCADE'),
     sa.ForeignKeyConstraint(['research_source_id'], ['research_sources.id'], ondelete='SET NULL'),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('document_pages',
+    sa.Column('document_id', sa.Uuid(), nullable=False),
     sa.Column('document_version_id', sa.Uuid(), nullable=False),
     sa.Column('page_number', sa.Integer(), nullable=False),
-    sa.Column('text', sa.Text(), nullable=False),
+    sa.Column('extracted_text', sa.Text(), nullable=False),
     sa.Column('metadata', sa.JSON(), nullable=False),
     sa.Column('id', sa.Uuid(), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.CheckConstraint('page_number > 0', name='ck_document_pages_positive'),
-    sa.ForeignKeyConstraint(['document_version_id'], ['document_versions.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['document_id', 'document_version_id'], ['document_versions.document_id', 'document_versions.id'], name='fk_document_pages_document_version', ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('document_version_id', 'page_number', name='uq_document_pages_version_page')
     )
@@ -169,7 +178,7 @@ def upgrade() -> None:
     sa.Column('idempotency_key', sa.String(length=255), nullable=True),
     sa.Column('error_message', sa.Text(), nullable=True),
     sa.Column('started_at', sa.DateTime(timezone=True), nullable=True),
-    sa.Column('finished_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('completed_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('id', sa.Uuid(), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
@@ -199,19 +208,23 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('claims',
+    sa.Column('document_id', sa.Uuid(), nullable=False),
     sa.Column('document_version_id', sa.Uuid(), nullable=False),
     sa.Column('page_id', sa.Uuid(), nullable=True),
-    sa.Column('paragraph_index', sa.Integer(), nullable=True),
+    sa.Column('paragraph_number', sa.Integer(), nullable=True),
+    sa.Column('page_number', sa.Integer(), nullable=True),
     sa.Column('original_text', sa.Text(), nullable=False),
+    sa.Column('normalized_text', sa.Text(), nullable=True),
     sa.Column('context_text', sa.Text(), nullable=True),
     sa.Column('claim_type', sa.Enum('numerical', 'statistical', 'comparative', 'causal', 'descriptive', 'temporal', 'other', name='claim_type', native_enum=False, create_constraint=True), server_default=sa.text("'other'"), nullable=False),
     sa.Column('requires_external_verification', sa.Boolean(), server_default=sa.text('true'), nullable=False),
     sa.Column('extraction_method', sa.String(length=120), nullable=True),
+    sa.Column('extraction_status', sa.Enum('pending', 'completed', 'failed', name='claim_extraction_status', native_enum=False, create_constraint=True), server_default=sa.text("'pending'"), nullable=False),
     sa.Column('id', sa.Uuid(), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-    sa.CheckConstraint('paragraph_index IS NULL OR paragraph_index >= 0', name='ck_claims_paragraph_nonnegative'),
-    sa.ForeignKeyConstraint(['document_version_id'], ['document_versions.id'], ondelete='CASCADE'),
+    sa.CheckConstraint('paragraph_number IS NULL OR paragraph_number >= 0', name='ck_claims_paragraph_nonnegative'),
+    sa.ForeignKeyConstraint(['document_id', 'document_version_id'], ['document_versions.document_id', 'document_versions.id'], name='fk_claims_document_version', ondelete='CASCADE'),
     sa.ForeignKeyConstraint(['page_id'], ['document_pages.id'], ondelete='SET NULL'),
     sa.PrimaryKeyConstraint('id')
     )
@@ -252,6 +265,8 @@ def upgrade() -> None:
     sa.Column('verdict', sa.Enum('supported', 'partly_supported', 'unsupported', 'contradictory', 'possibly_outdated', 'needs_review', name='verification_verdict', native_enum=False, create_constraint=True), nullable=False),
     sa.Column('explanation', sa.Text(), nullable=False),
     sa.Column('confidence', sa.Enum('low', 'medium', 'high', name='confidence_label', native_enum=False, create_constraint=True), nullable=True),
+    sa.Column('confidence_score', sa.Float(), nullable=True),
+    sa.Column('verification_status', sa.Enum('pending', 'completed', 'failed', 'needs_review', name='verification_status', native_enum=False, create_constraint=True), server_default=sa.text("'completed'"), nullable=False),
     sa.Column('model_provider', sa.String(length=100), nullable=False),
     sa.Column('model_name', sa.String(length=255), nullable=False),
     sa.Column('model_version', sa.String(length=120), nullable=True),
@@ -259,22 +274,23 @@ def upgrade() -> None:
     sa.Column('id', sa.Uuid(), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-    sa.ForeignKeyConstraint(['claim_id'], ['claims.id'], ondelete='CASCADE'),
-    sa.ForeignKeyConstraint(['document_version_id'], ['document_versions.id'], ondelete='CASCADE'),
+    sa.CheckConstraint('confidence_score IS NULL OR (confidence_score >= 0 AND confidence_score <= 1)', name='ck_verification_results_confidence'),
+    sa.ForeignKeyConstraint(['claim_id'], ['claims.id'], ondelete='RESTRICT'),
+    sa.ForeignKeyConstraint(['document_version_id'], ['document_versions.id'], ondelete='RESTRICT'),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('review_history',
     sa.Column('verification_result_id', sa.Uuid(), nullable=False),
     sa.Column('reviewer_id', sa.Uuid(), nullable=False),
     sa.Column('action', sa.Enum('accept_ai', 'reject_ai', 'change_verdict', 'resolve', 'reopen', name='review_action', native_enum=False, create_constraint=True), nullable=False),
-    sa.Column('original_verdict', sa.Enum('supported', 'partly_supported', 'unsupported', 'contradictory', 'possibly_outdated', 'needs_review', name='review_original_verdict', native_enum=False, create_constraint=True), nullable=False),
-    sa.Column('final_verdict', sa.Enum('supported', 'partly_supported', 'unsupported', 'contradictory', 'possibly_outdated', 'needs_review', name='review_final_verdict', native_enum=False, create_constraint=True), nullable=False),
-    sa.Column('comment', sa.Text(), nullable=True),
+    sa.Column('original_ai_verdict', sa.Enum('supported', 'partly_supported', 'unsupported', 'contradictory', 'possibly_outdated', 'needs_review', name='review_original_verdict', native_enum=False, create_constraint=True), nullable=False),
+    sa.Column('human_verdict', sa.Enum('supported', 'partly_supported', 'unsupported', 'contradictory', 'possibly_outdated', 'needs_review', name='review_final_verdict', native_enum=False, create_constraint=True), nullable=False),
+    sa.Column('reviewer_comment', sa.Text(), nullable=True),
     sa.Column('is_resolved', sa.Boolean(), server_default=sa.text('false'), nullable=False),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('reviewed_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('id', sa.Uuid(), nullable=False),
     sa.ForeignKeyConstraint(['reviewer_id'], ['users.id'], ondelete='RESTRICT'),
-    sa.ForeignKeyConstraint(['verification_result_id'], ['verification_results.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['verification_result_id'], ['verification_results.id'], ondelete='RESTRICT'),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('user_feedback',
@@ -288,7 +304,7 @@ def upgrade() -> None:
     sa.CheckConstraint('rating BETWEEN 1 AND 5', name='ck_user_feedback_rating'),
     sa.ForeignKeyConstraint(['claim_id'], ['claims.id'], ondelete='CASCADE'),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
-    sa.ForeignKeyConstraint(['verification_result_id'], ['verification_results.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['verification_result_id'], ['verification_results.id'], ondelete='RESTRICT'),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('verification_evidence',
@@ -313,21 +329,27 @@ def upgrade() -> None:
     )
     op.create_index('ix_research_sources_title', 'research_sources', ['title'], unique=False)
     op.create_index('uq_research_sources_doi', 'research_sources', ['doi'], unique=True, postgresql_where=sa.text('doi IS NOT NULL'))
-    op.create_index('ix_documents_owner_created', 'documents', ['owner_id', 'created_at'], unique=False)
+    op.create_index('ix_audit_logs_user_created', 'audit_logs', ['user_id', 'created_at'], unique=False)
+    op.create_index('ix_documents_file_hash', 'documents', ['file_hash'], unique=False)
+    op.create_index('ix_documents_processing_status', 'documents', ['processing_status'], unique=False)
+    op.create_index('ix_documents_user_created', 'documents', ['user_id', 'created_at'], unique=False)
     op.create_index('ix_source_versions_source_published', 'source_versions', ['source_id', 'published_at'], unique=False)
-    op.create_index('ix_evidence_passages_version_section', 'evidence_passages', ['source_version_id', 'section'], unique=False)
+    op.create_index('ix_evidence_passages_source_id', 'evidence_passages', ['source_id'], unique=False)
+    op.create_index('ix_evidence_passages_version_section', 'evidence_passages', ['source_version_id', 'section_name'], unique=False)
+    op.create_index('ix_citations_document_id', 'citations', ['document_id'], unique=False)
     op.create_index('ix_citations_doi', 'citations', ['doi'], unique=False)
     op.create_index('ix_citations_research_source', 'citations', ['research_source_id'], unique=False)
     op.create_index('ix_citations_version', 'citations', ['document_version_id'], unique=False)
     op.create_index('ix_embeddings_vector_hnsw', 'embeddings', ['vector'], unique=False, postgresql_using='hnsw', postgresql_with={'m': 16, 'ef_construction': 64}, postgresql_ops={'vector': 'vector_cosine_ops'})
     op.create_index('ix_processing_jobs_status_created', 'processing_jobs', ['status', 'created_at'], unique=False)
     op.create_index('ix_reports_owner_created', 'reports', ['owner_id', 'created_at'], unique=False)
+    op.create_index('ix_claims_document_id', 'claims', ['document_id'], unique=False)
     op.create_index('ix_claims_version_page', 'claims', ['document_version_id', 'page_id'], unique=False)
     op.create_index('ix_reference_issues_version_type', 'reference_issues', ['document_version_id', 'issue_type'], unique=False)
     op.create_index('ix_claim_citations_citation', 'claim_citations', ['citation_id'], unique=False)
     op.create_index('ix_claim_citations_claim', 'claim_citations', ['claim_id'], unique=False)
     op.create_index('ix_verification_results_claim_created', 'verification_results', ['claim_id', 'created_at'], unique=False)
-    op.create_index('ix_review_history_result_created', 'review_history', ['verification_result_id', 'created_at'], unique=False)
+    op.create_index('ix_review_history_result_created', 'review_history', ['verification_result_id', 'reviewed_at'], unique=False)
     op.create_index('ix_review_history_reviewer', 'review_history', ['reviewer_id'], unique=False)
     op.create_index('ix_verification_evidence_result', 'verification_evidence', ['verification_result_id'], unique=False)
     # ### end Alembic commands ###
