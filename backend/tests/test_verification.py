@@ -244,6 +244,26 @@ def test_verification_history_is_paginated(verification_db: Session) -> None:
     assert len(history["verification_results"]) == 1
 
 
+def test_gemini_failure_persists_failed_status(
+    verification_db: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    user, document, claim, passage = make_claim(verification_db, with_evidence=True)
+    assert passage is not None
+
+    def fail(*args, **kwargs):
+        raise RuntimeError("provider unavailable")
+
+    monkeypatch.setattr(
+        "app.services.verdict_classifier.verification_service._gemini_verify",
+        fail,
+    )
+    result = verify_claim(claim.id, user, verification_db)
+    assert result.verification_status == VerificationStatus.FAILED
+    assert result.verdict == Verdict.NEEDS_REVIEW
+    assert result.error_message == "Gemini verification unavailable"
+
+
 def test_cross_user_access_denial(verification_db: Session) -> None:
     owner, document, claim, passage = make_claim(verification_db, with_evidence=False)
     other = User(
