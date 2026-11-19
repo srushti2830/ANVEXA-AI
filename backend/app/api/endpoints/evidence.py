@@ -50,7 +50,7 @@ def get_claim_evidence(
     return list_claim_evidence(claim_id, current_user, db, page, per_page)
 
 
-@source_router.get("/sources/{source_id}/evidence")
+@source_router.get("/{source_id}/evidence")
 def get_source_evidence(
     source_id: UUID,
     page: int = Query(default=1, ge=1),
