@@ -20,8 +20,8 @@ from app.services.verdict_classifier.verdict_classifier import (
     classify_claim,
     classify_document,
     get_claim_classification,
-    get_document_verdicts,
-    submit_human_verdict,
+    get_document_verdicts as get_document_verdicts_service,
+    submit_human_verdict as submit_human_verdict_service,
 )
 
 claim_router = APIRouter(tags=["verdict-classification"])
@@ -73,20 +73,20 @@ def get_document_verdicts(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    return get_document_verdicts(document_id, current_user, db, page, per_page)
+    return get_document_verdicts_service(document_id, current_user, db, page, per_page)
 
 
 @claim_router.post(
     "/claims/{claim_id}/human-verdict",
     response_model=HumanVerdictResponse,
 )
-def submit_human_verdict(
+def submit_human_verdict_endpoint(
     claim_id: UUID,
     payload: HumanVerdictRequest,
     reviewer: User = Depends(require_role(UserRole.REVIEWER, UserRole.ADMIN)),
     db: Session = Depends(get_db),
 ):
-    return submit_human_verdict(
+    return submit_human_verdict_service(
         claim_id,
         payload.verdict,
         payload.comment,
