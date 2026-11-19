@@ -240,7 +240,7 @@ def submit_human_review(
     _ensure_reviewer(reviewer)
     result = _get_review_result(review_id, db)
     claim, document = _claim_document(result, db)
-    verify_resource_ownership(document.user_id, reviewer)
+    verify_resource_ownership(document.user_id, reviewer, allow_roles=(UserRole.REVIEWER, UserRole.ADMIN))
 
     if result.review_status == ReviewStatus.RESOLVED:
         existing = db.execute(
@@ -318,7 +318,7 @@ def request_investigation(
     _ensure_reviewer(reviewer)
     result = _get_review_result(review_id, db)
     claim, document = _claim_document(result, db)
-    verify_resource_ownership(document.user_id, reviewer)
+    verify_resource_ownership(document.user_id, reviewer, allow_roles=(UserRole.REVIEWER, UserRole.ADMIN))
     if not explanation or len(explanation.strip()) < 10:
         raise HTTPException(status_code=422, detail="Investigation request explanation is required")
     if result.review_status == ReviewStatus.RESOLVED:
@@ -384,7 +384,7 @@ def get_review_history(
     _ensure_reviewer(reviewer)
     result = _get_review_result(review_id, db)
     claim, document = _claim_document(result, db)
-    verify_resource_ownership(document.user_id, reviewer)
+    verify_resource_ownership(document.user_id, reviewer, allow_roles=(UserRole.REVIEWER, UserRole.ADMIN))
     all_history = list(db.execute(
         select(ReviewHistory)
         .where(ReviewHistory.verification_result_id == result.id)
@@ -415,7 +415,7 @@ def list_document_reviews(
     document = db.get(Document, document_id)
     if document is None:
         raise HTTPException(status_code=404, detail="Document not found")
-    verify_resource_ownership(document.user_id, reviewer)
+    verify_resource_ownership(document.user_id, reviewer, allow_roles=(UserRole.REVIEWER, UserRole.ADMIN))
     claim_ids = list(db.execute(
         select(Claim.id).where(Claim.document_id == document_id)
     ).scalars().all())
