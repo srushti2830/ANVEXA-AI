@@ -5,6 +5,7 @@ from uuid import UUID
 
 import pytest
 from sqlalchemy import create_engine, event
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Session
 
 from backend.app.core.embedding import EMBEDDING_DIMENSION, EMBEDDING_MODEL
@@ -13,6 +14,7 @@ from backend.app.database.crud import (
     create_record,
     delete_record,
     get_record,
+    similar_evidence_query,
     update_record,
 )
 from backend.app.models import Document, Embedding, User
@@ -74,6 +76,29 @@ def test_embedding_dimension_matches_configured_model() -> None:
     assert vector_type.dim == EMBEDDING_DIMENSION
     assert EMBEDDING_MODEL == "sentence-transformers/all-MiniLM-L6-v2"
     assert EMBEDDING_DIMENSION == 384
+
+
+def test_semantic_search_compiles_to_pgvector_cosine_query() -> None:
+    statement = similar_evidence_query([0.0] * EMBEDDING_DIMENSION)
+
+    assert "<=>" in str(statement.compile(dialect=postgresql.dialect()))
+
+
+@pytest.mark.parametrize(
+    ("vector", "limit", "message"),
+    [
+        ([0.0], 10, "exactly 384"),
+        ([0.0] * EMBEDDING_DIMENSION, 0, "between 1 and 100"),
+        ([0.0] * EMBEDDING_DIMENSION, 101, "between 1 and 100"),
+    ],
+)
+def test_semantic_search_validates_vector_and_limit(
+    vector: list[float],
+    limit: int,
+    message: str,
+) -> None:
+    with pytest.raises(ValueError, match=message):
+        similar_evidence_query(vector, limit)
 
 
 def test_document_crud_round_trip(db_session: Session) -> None:
