@@ -33,6 +33,13 @@ class StorageBackend(ABC):
         """Return ``True`` if an object with *storage_key* exists."""
 
     @abstractmethod
+    def read(self, storage_key: str) -> bytes:
+        """Read and return the raw bytes for *storage_key*.
+
+        Raises ``StorageError`` if the key does not exist or cannot be read.
+        """
+
+    @abstractmethod
     def get_path(self, storage_key: str) -> str:
         """Return the canonical internal path/URI for *storage_key*.
 
