@@ -77,7 +77,7 @@ def test_registration_login_and_authenticated_me(http_app) -> None:
         "POST",
         "/api/v1/auth/register",
         json={
-            "email": "phase14-http@example.test",
+            "email": "phase14-http@example.com",
             "full_name": "Phase 14 HTTP",
             "password": "Phase14Test!123",
         },
@@ -89,7 +89,7 @@ def test_registration_login_and_authenticated_me(http_app) -> None:
         "POST",
         "/api/v1/auth/login",
         json={
-            "email": "phase14-http@example.test",
+            "email": "phase14-http@example.com",
             "password": "Phase14Test!123",
         },
     )
@@ -105,7 +105,7 @@ def test_registration_login_and_authenticated_me(http_app) -> None:
         headers={"Authorization": f"Bearer {tokens['access_token']}"},
     )
     assert me.status_code == 200
-    assert me.json()["email"] == "phase14-http@example.test"
+    assert me.json()["email"] == "phase14-http@example.com"
 
 
 def test_unauthorized_document_upload_is_denied(http_app) -> None:
@@ -124,7 +124,7 @@ def test_authenticated_document_upload_and_status(http_app) -> None:
         "POST",
         "/api/v1/auth/register",
         json={
-            "email": "phase14-upload@example.test",
+            "email": "phase14-upload@example.com",
             "full_name": "Phase 14 Upload",
             "password": "Phase14Test!123",
         },
@@ -135,7 +135,7 @@ def test_authenticated_document_upload_and_status(http_app) -> None:
         "POST",
         "/api/v1/auth/login",
         json={
-            "email": "phase14-upload@example.test",
+            "email": "phase14-upload@example.com",
             "password": "Phase14Test!123",
         },
     )
