@@ -274,3 +274,291 @@ def _owned_document(document_id: UUID, current_user: User, db: Session) -> Docum
         raise HTTPException(status_code=404, detail="Document not found")
     verify_resource_ownership(doc.user_id, current_user)
     return doc
+
+
+def _latest_version(document: Document, db: Session) -> DocumentVersion:
+    version = db.execute(
+        select(DocumentVersion)
+        .where(DocumentVersion.document_id == document.id)
+        .order_by(DocumentVersion.version_number.desc())
+        .limit(1)
+    ).scalar_one_or_none()
+    if version is None:
+        raise HTTPException(status_code=404, detail="Document has not been parsed yet")
+    return version
+
+
+def _source_ids_for_claim(claim_id: UUID, db: Session) -> list[UUID]:
+    from app.models.document import ClaimCitation
+
+    source_ids: list[UUID] = []
+    links = list(db.execute(
+        select(ClaimCitation).where(ClaimCitation.claim_id == claim_id)
+    ).scalars().all())
+    for link in links:
+        citation = db.get(Citation, link.citation_id)
+        if citation and citation.research_source_id:
+            source_ids.append(citation.research_source_id)
+    return list(dict.fromkeys(source_ids))
+
+
+def _source_ids_for_document(version_id: UUID, db: Session) -> list[UUID]:
+    citations = list(db.execute(
+        select(Citation).where(
+            Citation.document_version_id == version_id,
+            Citation.research_source_id.is_not(None),
+        )
+    ).scalars().all())
+    return list(dict.fromkeys(
+        citation.research_source_id
+        for citation in citations
+        if citation.research_source_id is not None
+    ))
+
+
+def _ensure_source_version(source: ResearchSource, db: Session) -> SourceVersion:
+    version = db.execute(
+        select(SourceVersion)
+        .where(SourceVersion.source_id == source.id)
+        .order_by(SourceVersion.created_at.asc())
+        .limit(1)
+    ).scalar_one_or_none()
+    if version is not None:
+        return version
+    version = SourceVersion(
+        source_id=source.id,
+        version_type="published",
+        version_url=source.source_url,
+        content_sha256=hashlib.sha256(
+            (source.doi or source.title).encode("utf-8")
+        ).hexdigest(),
+        full_text_available=False,
+        metadata_json={
+            "passage_source": "phase8_metadata",
+        },
+    )
+    db.add(version)
+    db.flush()
+    return version
+
+
+def _add_abstract_passages(
+    source: ResearchSource,
+    source_version: SourceVersion,
+    db: Session,
+) -> int:
+    if not source.abstract or not source.abstract.strip():
+        return 0
+    chunks = chunk_text(source.abstract, section_name="Abstract")
+    added = 0
+    for index, chunk in enumerate(chunks, start=1):
+        existing = db.execute(
+            select(EvidencePassage).where(
+                EvidencePassage.source_version_id == source_version.id,
+                EvidencePassage.passage_hash == chunk["passage_hash"],
+            )
+        ).scalar_one_or_none()
+        if existing is not None:
+            continue
+        passage = EvidencePassage(
+            source_id=source.id,
+            source_version_id=source_version.id,
+            passage_index=index,
+            passage_text=chunk["text"],
+            section_name=chunk["section_name"],
+            page_number=None,
+            paragraph_number=chunk["paragraph_number"],
+            location=f"{source.title} | Abstract",
+            content_type=EvidenceContentType.ABSTRACT,
+            extraction_method="source_metadata_abstract",
+            source_url=source.source_url,
+            doi=source.doi,
+            passage_hash=chunk["passage_hash"],
+        )
+        db.add(passage)
+        added += 1
+    db.flush()
+    return added
+
+
+def _add_full_text_passages(
+    source: ResearchSource,
+    source_version: SourceVersion,
+    db: Session,
+) -> int:
+    url = source.source_url
+    if not url:
+        for version in source.versions:
+            if version.version_url:
+                url = version.version_url
+                break
+    if not url:
+        return 0
+    parsed, method = extract_full_text(url)
+    if not parsed or not method:
+        return 0
+    existing_count = db.execute(
+        select(EvidencePassage)
+        .where(EvidencePassage.source_version_id == source_version.id)
+    ).all()
+    index = len(existing_count)
+    added = 0
+    for section, page_number, text in parsed:
+        for chunk in chunk_text(text, section_name=section):
+            existing = db.execute(
+                select(EvidencePassage).where(
+                    EvidencePassage.source_version_id == source_version.id,
+                    EvidencePassage.passage_hash == chunk["passage_hash"],
+                )
+            ).scalar_one_or_none()
+            if existing is not None:
+                continue
+            index += 1
+            passage = EvidencePassage(
+                source_id=source.id,
+                source_version_id=source_version.id,
+                passage_index=index,
+                passage_text=chunk["text"],
+                section_name=chunk["section_name"],
+                page_number=page_number,
+                paragraph_number=chunk["paragraph_number"],
+                location=(
+                    f"{source.title}"
+                    f"{' | p.' + str(page_number) if page_number else ''}"
+                ),
+                content_type=EvidenceContentType.FULL_TEXT,
+                extraction_method=method,
+                source_url=url,
+                doi=source.doi,
+                passage_hash=chunk["passage_hash"],
+            )
+            db.add(passage)
+            added += 1
+    db.flush()
+    return added
+
+
+def _embed_new_passages(passages: list[EvidencePassage], db: Session) -> int:
+    missing = []
+    for passage in passages:
+        if passage.embedding is None:
+            missing.append(passage)
+    if not missing:
+        return 0
+    vectors = generate_embeddings([passage.passage_text for passage in missing])
+    for passage, vector in zip(missing, vectors):
+        db.add(Embedding(
+            evidence_passage_id=passage.id,
+            vector=vector,
+            model_name=EMBEDDING_MODEL,
+        ))
+    db.flush()
+    return len(missing)
+
+
+def extract_evidence_for_source_ids(
+    source_ids: list[UUID],
+    db: Session,
+    *,
+    include_full_text: bool = True,
+) -> tuple[list[EvidencePassage], int, int]:
+    passages: list[EvidencePassage] = []
+    abstract_count = 0
+    full_text_count = 0
+    for source_id in source_ids:
+        source = db.get(ResearchSource, source_id)
+        if source is None:
+            continue
+        source_version = _ensure_source_version(source, db)
+        abstract_count += _add_abstract_passages(source, source_version, db)
+        if include_full_text:
+            full_text_count += _add_full_text_passages(source, source_version, db)
+        passages.extend(db.execute(
+            select(EvidencePassage)
+            .where(EvidencePassage.source_id == source.id)
+            .order_by(EvidencePassage.passage_index)
+        ).scalars().all())
+    _embed_new_passages(passages, db)
+    return passages, abstract_count, full_text_count
+
+
+def retrieve_evidence(
+    claim_id: UUID,
+    source_ids: list[UUID],
+    db: Session,
+    *,
+    page: int = 1,
+    per_page: int = 20,
+) -> dict:
+    passages, abstract_count, full_text_count = extract_evidence_for_source_ids(
+        source_ids,
+        db,
+    )
+    claim = db.get(Claim, claim_id)
+    if claim is None:
+        raise HTTPException(status_code=404, detail="Claim not found")
+
+    ranked: list[tuple[EvidencePassage, float]] = []
+    try:
+        claim_embedding = db.execute(
+            select(Embedding).where(Embedding.claim_id == claim.id)
+        ).scalar_one_or_none()
+        if claim_embedding is None:
+            vector = generate_embeddings([claim.normalized_text or claim.original_text])[0]
+            claim_embedding = Embedding(
+                claim_id=claim.id,
+                vector=vector,
+                model_name=EMBEDDING_MODEL,
+            )
+            db.add(claim_embedding)
+            db.flush()
+        claim_vector = list(claim_embedding.vector)
+    except RuntimeError:
+        claim_vector = None
+
+    for passage in passages:
+        if passage.embedding is not None:
+            passage_vector = list(passage.embedding.vector)
+        else:
+            continue
+        score = (
+            cosine_similarity(claim_vector, passage_vector)
+            if claim_vector is not None
+            else 0.0
+        )
+        ranked.append((passage, score))
+    ranked.sort(key=lambda item: item[1], reverse=True)
+    offset = (page - 1) * per_page
+    page_items = ranked[offset:offset + per_page]
+
+    evidence = []
+    for passage, score in page_items:
+        source = db.get(ResearchSource, passage.source_id)
+        evidence.append({
+            "evidence_id": passage.id,
+            "claim_id": claim.id,
+            "source_id": passage.source_id,
+            "publication_title": source.title if source else "Unknown source",
+            "evidence_text": passage.passage_text,
+            "content_type": passage.content_type,
+            "section_name": passage.section_name,
+            "page_number": passage.page_number,
+            "paragraph_number": passage.paragraph_number,
+            "source_url": passage.source_url,
+            "doi": passage.doi,
+            "extraction_method": passage.extraction_method,
+            "similarity_score": score,
+            "created_at": passage.created_at,
+        })
+    try:
+        db.commit()
+    except Exception as exc:
+        db.rollback()
+        logger.exception("Failed to persist evidence extraction")
+        raise HTTPException(status_code=500, detail="Failed to persist evidence") from exc
+    return {
+        "claim_id": claim.id,
+        "evidence": evidence,
+        "total_evidence": len(ranked),
+        "extraction_status": "completed",
+    }
