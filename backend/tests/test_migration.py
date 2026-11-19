@@ -67,3 +67,32 @@ def test_auth_migration_renders_postgresql_schema_offline() -> None:
     assert "ALTER TABLE users ADD COLUMN is_active" in result.stdout
     assert "ALTER TABLE users ADD COLUMN is_verified" in result.stdout
     assert "CREATE UNIQUE INDEX ix_refresh_tokens_token_hash" in result.stdout
+
+
+def test_phase10_through_phase13_migrations_render_offline() -> None:
+    repository_root = Path(__file__).resolve().parents[2]
+    environment = os.environ.copy()
+    environment["ANVEXA_DATABASE_URL"] = (
+        "postgresql+psycopg://user:password@localhost:5432/anvexa_db"
+    )
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "alembic",
+            "-c",
+            "backend/alembic.ini",
+            "upgrade",
+            "head",
+            "--sql",
+        ],
+        cwd=repository_root,
+        env=environment,
+        capture_output=True,
+        check=True,
+        text=True,
+    )
+    assert "request_investigation" in result.stdout
+    assert "ALTER TABLE review_history DROP CONSTRAINT review_action" in result.stdout
+    assert "ALTER TABLE reports DROP CONSTRAINT report_format" in result.stdout
+    assert "format IN ('pdf', 'csv', 'json')" in result.stdout
