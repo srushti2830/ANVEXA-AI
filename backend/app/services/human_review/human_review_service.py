@@ -119,7 +119,12 @@ def get_review_queue(
             document = db.get(Document, document_id)
             if document is None:
                 raise HTTPException(status_code=404, detail="Document not found")
-            verify_resource_ownership(document.user_id, reviewer, allow_roles=("admin",))
+            from app.models.enums import UserRole
+            verify_resource_ownership(
+                document.user_id,
+                reviewer,
+                allow_roles=(UserRole.ADMIN,),
+            )
             statement = statement.where(VerificationResult.claim_id.in_(claim_ids))
     if verdict is not None:
         statement = statement.where(
