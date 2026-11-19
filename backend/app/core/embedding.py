@@ -1,2 +1,6 @@
-EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
-EMBEDDING_DIMENSION = 384
+from backend.app.core.config import get_settings
+
+_settings = get_settings()
+
+EMBEDDING_MODEL = _settings.embedding_model
+EMBEDDING_DIMENSION = _settings.embedding_dimension
