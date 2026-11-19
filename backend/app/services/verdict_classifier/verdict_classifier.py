@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies import verify_resource_ownership
 from app.models.document import Claim, Document, DocumentVersion
-from app.models.enums import ReviewAction, Verdict, VerificationStatus
+from app.models.enums import ReviewAction, ReviewStatus, Verdict, VerificationStatus
 from app.models.user import User
 from app.models.verification import (
     ReviewHistory,
@@ -322,6 +322,8 @@ def submit_human_verdict(
     result.classification_confidence = 1.0
     result.classified_at = datetime.now(timezone.utc)
     result.requires_human_review = False
+    result.review_status = ReviewStatus.RESOLVED
+    result.assigned_reviewer_id = reviewer.id
     db.commit()
     db.refresh(review)
     return {
