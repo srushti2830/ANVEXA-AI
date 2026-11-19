@@ -4,6 +4,7 @@ import httpx
 from fastapi import FastAPI
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import OperationalError
+from sqlalchemy.pool import StaticPool
 
 from backend.app.core.config import Settings
 from backend.app.database import health as database_health
@@ -27,6 +28,7 @@ def test_session_dependency_uses_injected_engine(monkeypatch) -> None:
     engine = create_engine(
         "sqlite+pysqlite:///:memory:",
         connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
     )
     monkeypatch.setattr(
         "backend.app.database.session.get_engine",
@@ -47,6 +49,7 @@ def test_database_health_reports_connection_and_pgvector(monkeypatch) -> None:
     engine = create_engine(
         "sqlite+pysqlite:///:memory:",
         connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
     )
     with engine.begin() as connection:
         connection.execute(text("CREATE TABLE pg_extension (extname TEXT)"))
@@ -70,7 +73,11 @@ def test_database_health_reports_connection_and_pgvector(monkeypatch) -> None:
 
 
 def test_database_health_reports_missing_pgvector(monkeypatch) -> None:
-    engine = create_engine("sqlite+pysqlite:///:memory:")
+    engine = create_engine(
+        "sqlite+pysqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
     with engine.begin() as connection:
         connection.execute(text("CREATE TABLE pg_extension (extname TEXT)"))
     monkeypatch.setattr(database_health, "get_engine", lambda: engine)
