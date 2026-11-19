@@ -46,8 +46,8 @@ class ResearchSource(Base, UUIDPrimaryKey, TimestampMixin):
     authors: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     publication_year: Mapped[int | None] = mapped_column(Integer)
     journal: Mapped[str | None] = mapped_column(String(500))
-    canonical_url: Mapped[str | None] = mapped_column(String(2048))
-    source_url = synonym("canonical_url")
+    source_url: Mapped[str | None] = mapped_column(String(2048))
+    canonical_url = synonym("source_url")
     abstract: Mapped[str | None] = mapped_column(Text)
     retrieval_status: Mapped[RetrievalStatus] = mapped_column(
         enum_column(RetrievalStatus, "research_source_retrieval_status"),
@@ -92,6 +92,7 @@ class SourceVersion(Base, UUIDPrimaryKey, TimestampMixin):
             "content_sha256",
             name="uq_source_versions_content",
         ),
+        UniqueConstraint("source_id", "id", name="uq_source_versions_source_id"),
         Index("ix_source_versions_source_published", "source_id", "published_at"),
     )
 
@@ -138,25 +139,44 @@ class EvidencePassage(Base, UUIDPrimaryKey, TimestampMixin):
             name="ck_evidence_passages_page_positive",
         ),
         CheckConstraint("passage_index >= 0", name="ck_evidence_passages_index"),
+        CheckConstraint(
+            "relevance_score IS NULL OR "
+            "(relevance_score >= 0 AND relevance_score <= 1)",
+            name="ck_evidence_passages_relevance",
+        ),
         UniqueConstraint(
             "source_version_id",
             "passage_index",
             name="uq_evidence_passages_version_index",
         ),
-        Index("ix_evidence_passages_version_section", "source_version_id", "section"),
+        Index("ix_evidence_passages_source_id", "source_id"),
+        Index(
+            "ix_evidence_passages_version_section",
+            "source_version_id",
+            "section_name",
+        ),
     )
 
+    source_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("research_sources.id", ondelete="CASCADE"),
+        nullable=False,
+    )
     source_version_id: Mapped[UUID] = mapped_column(
         Uuid(as_uuid=True),
         ForeignKey("source_versions.id", ondelete="CASCADE"),
         nullable=False,
     )
     passage_index: Mapped[int] = mapped_column(Integer, nullable=False)
-    text: Mapped[str] = mapped_column(Text, nullable=False)
-    section: Mapped[str | None] = mapped_column(String(300))
+    passage_text: Mapped[str] = mapped_column(Text, nullable=False)
+    text = synonym("passage_text")
+    section_name: Mapped[str | None] = mapped_column(String(300))
+    section = synonym("section_name")
     page_number: Mapped[int | None] = mapped_column(Integer)
     location: Mapped[str | None] = mapped_column(String(500))
+    relevance_score: Mapped[float | None] = mapped_column(Float)
 
+    source: Mapped[ResearchSource] = relationship(back_populates="evidence_passages")
     source_version: Mapped[SourceVersion] = relationship(
         back_populates="evidence_passages"
     )
