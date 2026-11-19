@@ -276,6 +276,12 @@ class Claim(Base, UUIDPrimaryKey, TimestampMixin):
         order_by="VerificationResult.created_at",
     )
     feedback: Mapped[list[UserFeedback]] = relationship(back_populates="claim")
+    embeddings: Mapped[list[object]] = relationship(
+        "Embedding",
+        foreign_keys="Embedding.claim_id",
+        cascade="all, delete-orphan",
+        uselist=True,
+    )
 
 
 class Citation(Base, UUIDPrimaryKey, TimestampMixin):
