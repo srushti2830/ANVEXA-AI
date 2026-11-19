@@ -81,5 +81,18 @@ class LocalStorageBackend(StorageBackend):
         except StorageError:
             return False
 
+    def read(self, storage_key: str) -> bytes:
+        """Read and return the raw bytes for *storage_key*."""
+        try:
+            target = self._resolve(storage_key)
+            if not target.is_file():
+                raise StorageError(f"File not found: {storage_key}")
+            return target.read_bytes()
+        except StorageError:
+            raise
+        except Exception as exc:
+            logger.exception("Failed to read storage_key=%s", storage_key)
+            raise StorageError(f"Failed to read file: {exc}") from exc
+
     def get_path(self, storage_key: str) -> str:
         return str(self._resolve(storage_key))
