@@ -56,10 +56,16 @@ class VerificationStatus(str, Enum):
 
 
 class ClaimType(str, Enum):
+    SCIENTIFIC = "scientific"
     NUMERICAL = "numerical"
     STATISTICAL = "statistical"
     COMPARATIVE = "comparative"
     CAUSAL = "causal"
+    METHODOLOGICAL = "methodological"
+    MEDICAL = "medical"
+    TECHNICAL = "technical"
+    HISTORICAL = "historical"
+    GENERAL_FACTUAL = "general_factual"
     DESCRIPTIVE = "descriptive"
     TEMPORAL = "temporal"
     OTHER = "other"

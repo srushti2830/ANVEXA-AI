@@ -238,6 +238,14 @@ class Claim(Base, UUIDPrimaryKey, TimestampMixin):
         server_default=text("true"),
     )
     extraction_method: Mapped[str | None] = mapped_column(String(120))
+    section_heading: Mapped[str | None] = mapped_column(String(500))
+    extraction_confidence: Mapped[float | None] = mapped_column(Float)
+    citation_markers: Mapped[list[str]] = mapped_column(
+        JSON,
+        nullable=False,
+        default=list,
+    )
+    extraction_reason: Mapped[str | None] = mapped_column(Text)
     extraction_status: Mapped[ExtractionStatus] = mapped_column(
         enum_column(ExtractionStatus, "claim_extraction_status"),
         nullable=False,

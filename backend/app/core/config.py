@@ -51,6 +51,10 @@ class Settings(BaseSettings):
     document_storage_path: str = "./storage/documents"
     max_upload_size_bytes: int = Field(default=52_428_800, ge=1)  # 50 MB
     allowed_file_extensions: list[str] = Field(default=[".pdf", ".docx"])
+    gemini_api_key: SecretStr | None = None
+    gemini_model: str = "gemini-2.0-flash"
+    gemini_timeout_seconds: float = Field(default=20.0, ge=1.0, le=120.0)
+    gemini_max_retries: int = Field(default=2, ge=0, le=5)
 
     @field_validator("cors_origins", mode="before")
     @classmethod
