@@ -562,3 +562,201 @@ def retrieve_evidence(
         "total_evidence": len(ranked),
         "extraction_status": "completed",
     }
+
+
+def extract_claim_evidence(
+    claim_id: UUID,
+    current_user: User,
+    db: Session,
+) -> dict:
+    claim = db.get(Claim, claim_id)
+    if claim is None:
+        raise HTTPException(status_code=404, detail="Claim not found")
+    doc = db.get(Document, claim.document_id)
+    if doc is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+    verify_resource_ownership(doc.user_id, current_user)
+    source_ids = _source_ids_for_claim(claim_id, db)
+    return retrieve_evidence(claim_id, source_ids, db)
+
+
+def list_claim_evidence(
+    claim_id: UUID,
+    current_user: User,
+    db: Session,
+    page: int = 1,
+    per_page: int = 20,
+) -> dict:
+    claim = db.get(Claim, claim_id)
+    if claim is None:
+        raise HTTPException(status_code=404, detail="Claim not found")
+    doc = db.get(Document, claim.document_id)
+    if doc is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+    verify_resource_ownership(doc.user_id, current_user)
+    return retrieve_evidence(
+        claim_id,
+        _source_ids_for_claim(claim_id, db),
+        db,
+        page=page,
+        per_page=per_page,
+    )
+
+
+def list_source_evidence(
+    source_id: UUID,
+    current_user: User,
+    db: Session,
+    page: int = 1,
+    per_page: int = 20,
+) -> dict:
+    source = db.get(ResearchSource, source_id)
+    if source is None:
+        raise HTTPException(status_code=404, detail="Research source not found")
+    citation = db.execute(
+        select(Citation).where(Citation.research_source_id == source_id).limit(1)
+    ).scalar_one_or_none()
+    if citation is None:
+        raise HTTPException(status_code=404, detail="Research source not found")
+    doc = db.get(Document, citation.document_id)
+    if doc is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+    verify_resource_ownership(doc.user_id, current_user)
+    source_version = _ensure_source_version(source, db)
+    passages = list(db.execute(
+        select(EvidencePassage)
+        .where(EvidencePassage.source_id == source_id)
+        .order_by(EvidencePassage.passage_index)
+    ).scalars().all())
+    offset = (page - 1) * per_page
+    evidence = []
+    for passage in passages[offset:offset + per_page]:
+        evidence.append({
+            "evidence_id": passage.id,
+            "claim_id": passage.claim_id,
+            "source_id": passage.source_id,
+            "publication_title": source.title,
+            "evidence_text": passage.passage_text,
+            "content_type": passage.content_type,
+            "section_name": passage.section_name,
+            "page_number": passage.page_number,
+            "paragraph_number": passage.paragraph_number,
+            "source_url": passage.source_url,
+            "doi": passage.doi,
+            "extraction_method": passage.extraction_method,
+            "similarity_score": passage.relevance_score,
+            "created_at": passage.created_at,
+        })
+    return {
+        "source_id": source_id,
+        "evidence": evidence,
+        "total_evidence": len(passages),
+        "extraction_status": "completed",
+        "pagination": {
+            "total": len(passages),
+            "page": page,
+            "per_page": per_page,
+            "total_pages": (len(passages) + per_page - 1) // per_page,
+        },
+    }
+
+
+def extract_document_evidence(
+    document_id: UUID,
+    current_user: User,
+    db: Session,
+) -> dict:
+    doc = _owned_document(document_id, current_user, db)
+    if doc.processing_status != DocumentStatus.COMPLETED:
+        raise HTTPException(status_code=409, detail="Document parsing has not completed")
+    version = _latest_version(doc, db)
+    source_ids = _source_ids_for_document(version.id, db)
+    passages, abstract_count, full_text_count = extract_evidence_for_source_ids(
+        source_ids,
+        db,
+    )
+    try:
+        db.commit()
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Failed to persist evidence") from exc
+    evidence = []
+    for passage in passages:
+        source = db.get(ResearchSource, passage.source_id)
+        evidence.append({
+            "evidence_id": passage.id,
+            "claim_id": passage.claim_id,
+            "source_id": passage.source_id,
+            "publication_title": source.title if source else "Unknown source",
+            "evidence_text": passage.passage_text,
+            "content_type": passage.content_type,
+            "section_name": passage.section_name,
+            "page_number": passage.page_number,
+            "paragraph_number": passage.paragraph_number,
+            "source_url": passage.source_url,
+            "doi": passage.doi,
+            "extraction_method": passage.extraction_method,
+            "similarity_score": passage.relevance_score,
+            "created_at": passage.created_at,
+        })
+    return {
+        "document_id": doc.id,
+        "version_id": version.id,
+        "evidence": evidence,
+        "total_evidence": len(evidence),
+        "extraction_status": "completed",
+        "abstract_passages_added": abstract_count,
+        "full_text_passages_added": full_text_count,
+    }
+
+
+def list_document_evidence(
+    document_id: UUID,
+    current_user: User,
+    db: Session,
+    page: int = 1,
+    per_page: int = 20,
+) -> dict:
+    doc = _owned_document(document_id, current_user, db)
+    version = _latest_version(doc, db)
+    source_ids = _source_ids_for_document(version.id, db)
+    passages: list[EvidencePassage] = []
+    for source_id in source_ids:
+        passages.extend(db.execute(
+            select(EvidencePassage)
+            .where(EvidencePassage.source_id == source_id)
+            .order_by(EvidencePassage.passage_index)
+        ).scalars().all())
+    offset = (page - 1) * per_page
+    evidence = []
+    for passage in passages[offset:offset + per_page]:
+        source = db.get(ResearchSource, passage.source_id)
+        evidence.append({
+            "evidence_id": passage.id,
+            "claim_id": passage.claim_id,
+            "source_id": passage.source_id,
+            "publication_title": source.title if source else "Unknown source",
+            "evidence_text": passage.passage_text,
+            "content_type": passage.content_type,
+            "section_name": passage.section_name,
+            "page_number": passage.page_number,
+            "paragraph_number": passage.paragraph_number,
+            "source_url": passage.source_url,
+            "doi": passage.doi,
+            "extraction_method": passage.extraction_method,
+            "similarity_score": passage.relevance_score,
+            "created_at": passage.created_at,
+        })
+    return {
+        "document_id": doc.id,
+        "version_id": version.id,
+        "evidence": evidence,
+        "total_evidence": len(passages),
+        "extraction_status": "completed",
+        "pagination": {
+            "total": len(passages),
+            "page": page,
+            "per_page": per_page,
+            "total_pages": (len(passages) + per_page - 1) // per_page,
+        },
+    }
