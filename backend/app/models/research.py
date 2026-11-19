@@ -11,6 +11,7 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
+    ForeignKeyConstraint,
     Index,
     Integer,
     JSON,
@@ -77,7 +78,10 @@ class ResearchSource(Base, UUIDPrimaryKey, TimestampMixin):
     )
     evidence_passages: Mapped[list[EvidencePassage]] = relationship(
         back_populates="source",
-        cascade="all, delete-orphan",
+        secondary="source_versions",
+        primaryjoin="ResearchSource.id == SourceVersion.source_id",
+        secondaryjoin="SourceVersion.id == EvidencePassage.source_version_id",
+        viewonly=True,
     )
     reference_issues: Mapped[list[ReferenceIssue]] = relationship(
         back_populates="source"
@@ -155,17 +159,17 @@ class EvidencePassage(Base, UUIDPrimaryKey, TimestampMixin):
             "source_version_id",
             "section_name",
         ),
+        ForeignKeyConstraint(
+            ["source_id", "source_version_id"],
+            ["source_versions.source_id", "source_versions.id"],
+            ondelete="CASCADE",
+            name="fk_evidence_passages_source_version",
+        ),
     )
 
-    source_id: Mapped[UUID] = mapped_column(
-        Uuid(as_uuid=True),
-        ForeignKey("research_sources.id", ondelete="CASCADE"),
-        nullable=False,
-    )
+    source_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
     source_version_id: Mapped[UUID] = mapped_column(
-        Uuid(as_uuid=True),
-        ForeignKey("source_versions.id", ondelete="CASCADE"),
-        nullable=False,
+        Uuid(as_uuid=True), nullable=False
     )
     passage_index: Mapped[int] = mapped_column(Integer, nullable=False)
     passage_text: Mapped[str] = mapped_column(Text, nullable=False)
@@ -176,7 +180,12 @@ class EvidencePassage(Base, UUIDPrimaryKey, TimestampMixin):
     location: Mapped[str | None] = mapped_column(String(500))
     relevance_score: Mapped[float | None] = mapped_column(Float)
 
-    source: Mapped[ResearchSource] = relationship(back_populates="evidence_passages")
+    source: Mapped[ResearchSource] = relationship(
+        secondary="source_versions",
+        primaryjoin="ResearchSource.id == SourceVersion.source_id",
+        secondaryjoin="SourceVersion.id == EvidencePassage.source_version_id",
+        viewonly=True,
+    )
     source_version: Mapped[SourceVersion] = relationship(
         back_populates="evidence_passages"
     )
