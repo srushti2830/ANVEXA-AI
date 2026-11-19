@@ -78,6 +78,7 @@ th { color: #7b887f; font-size: 11px; text-transform: uppercase; letter-spacing:
 .empty-state h3 { color: #35483e; margin: 0 0 6px; }
 .empty-state p { margin: 0; }
 .error-box { border: 1px solid #eccaca; background: #fff5f5; color: #9b3e3e; border-radius: 8px; padding: 12px 14px; margin: 12px 0; font-size: 13px; }
+.success-box { border: 1px solid #bed6c4; background: #f2faf4; color: #315e43; border-radius: 8px; padding: 12px 14px; margin: 12px 0; font-size: 13px; }
 .spinner { width: 18px; height: 18px; border: 2px solid #d6dfd8; border-top-color: #315d48; border-radius: 50%; animation: spin .8s linear infinite; margin-right: 8px; }
 @keyframes spin { to { transform: rotate(360deg); } }
 

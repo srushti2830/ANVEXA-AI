@@ -246,6 +246,7 @@ function Documents() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [success, setSuccess] = useState("");
   async function load() {
     setLoading(true);
     try {
@@ -264,10 +265,12 @@ function Documents() {
     }
     setUploading(true);
     setError("");
+    setSuccess("");
     try {
       const form = new FormData();
       form.append("file", file);
       await api.post("/documents/upload", form, { headers: { "Content-Type": "multipart/form-data" } });
+      setSuccess("Document uploaded successfully.");
       await load();
     } catch (err) { setError(errorMessage(err)); }
     finally { setUploading(false); event.target.value = ""; }
@@ -278,6 +281,7 @@ function Documents() {
         <label className="button file-button">{uploading ? "Uploading..." : "Upload document"}<input type="file" accept=".pdf,.docx" onChange={upload} disabled={uploading} /></label>
       } />
       <ErrorBox error={error} />
+      {success && <div className="success-box">{success}</div>}
       {loading ? <Loading /> : documents.length === 0 ? <Empty title="No documents" text="Upload a PDF or DOCX academic document to begin." /> :
         <div className="document-grid">
           {documents.map((document) => (
@@ -300,6 +304,7 @@ function DocumentDetail() {
   const [report, setReport] = useState(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState("");
+  const [success, setSuccess] = useState("");
   async function load() {
     try {
       const [documentResponse, claimResponse, citationResponse, sourceResponse, reportResponse] = await Promise.allSettled([
@@ -320,8 +325,10 @@ function DocumentDetail() {
   async function run(label, path, method = "post") {
     setBusy(label);
     setError("");
+    setSuccess("");
     try {
       await api[method](path);
+      setSuccess(`${label} completed successfully.`);
       await load();
     } catch (err) { setError(errorMessage(err)); }
     finally { setBusy(""); }
@@ -354,6 +361,7 @@ function DocumentDetail() {
         <><button className="button secondary" onClick={() => download("json")}>JSON report</button><button className="button" onClick={() => download("pdf")}>PDF report</button></>
       } />
       <ErrorBox error={error} />
+      {success && <div className="success-box">{success}</div>}
       <div className="status-strip">
         <span>Processing</span><strong>{document.processing_status}</strong>
         <span>Claims</span><strong>{claims.length}</strong>
@@ -413,9 +421,6 @@ function ClaimWorkspace() {
       if (classificationResponse.status === "fulfilled") setClassification(classificationResponse.value.data);
     }).catch((err) => setError(errorMessage(err)));
   }, [id]);
-  useEffect(() => {
-    api.get(`/claims/${id}/evidence`).catch(() => {});
-  }, [id]);
   return (
     <>
       <PageHeader eyebrow="Claim workspace" title="Evidence analysis" />
@@ -462,6 +467,7 @@ function Reviews() {
   const [verdict, setVerdict] = useState("NEEDS_REVIEW");
   const [explanation, setExplanation] = useState("");
   const [busy, setBusy] = useState(false);
+  const [success, setSuccess] = useState("");
   async function load() {
     try {
       const response = await api.get("/reviews/queue", { params: { page: 1, per_page: 50 } });
@@ -480,8 +486,10 @@ function Reviews() {
     if (!selected) return;
     setBusy(true);
     setError("");
+    setSuccess("");
     try {
       await api.post(`/reviews/${selected.review_id}/submit`, { verdict, explanation });
+      setSuccess("Human verdict submitted successfully.");
       await load();
       setSelected(null);
       setExplanation("");
@@ -491,10 +499,13 @@ function Reviews() {
   async function investigate() {
     if (!selected) return;
     setBusy(true);
+    setError("");
+    setSuccess("");
     try {
       await api.post(`/reviews/${selected.review_id}/request-investigation`, {
         explanation: explanation || "Further investigation is required to assess this claim.",
       });
+      setSuccess("Further investigation requested successfully.");
       await load();
     } catch (err) { setError(errorMessage(err)); }
     finally { setBusy(false); }
@@ -503,6 +514,7 @@ function Reviews() {
     <>
       <PageHeader eyebrow="Human review" title="Review queue" />
       <ErrorBox error={error} />
+      {success && <div className="success-box">{success}</div>}
       <div className="review-layout">
         <section className="panel review-list-panel">
           {reviews.length === 0 ? <Empty title="No cases awaiting review" text="AI and classified cases that require review will appear here." /> :
