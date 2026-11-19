@@ -16,3 +16,5 @@ pytesseract>=0.3.10
 Pillow>=10.0
 # HTTP client is also used for Gemini API calls
 httpx>=0.27,<1.0
+# Phase 9: semantic evidence embeddings
+sentence-transformers>=3.4,<6.0
