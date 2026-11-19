@@ -94,6 +94,44 @@ class VerificationResult(Base, UUIDPrimaryKey, TimestampMixin):
         default=VerificationStatus.COMPLETED,
         server_default=text("'completed'"),
     )
+    structured_analysis: Mapped[dict[str, object]] = mapped_column(
+        JSON,
+        nullable=False,
+        default=dict,
+    )
+    supporting_evidence_ids: Mapped[list[str]] = mapped_column(
+        JSON,
+        nullable=False,
+        default=list,
+    )
+    contradicting_evidence_ids: Mapped[list[str]] = mapped_column(
+        JSON,
+        nullable=False,
+        default=list,
+    )
+    limitations: Mapped[list[str]] = mapped_column(
+        JSON,
+        nullable=False,
+        default=list,
+    )
+    unresolved_questions: Mapped[list[str]] = mapped_column(
+        JSON,
+        nullable=False,
+        default=list,
+    )
+    prompt_version: Mapped[str] = mapped_column(
+        String(80),
+        nullable=False,
+        default="phase10-v1",
+        server_default=text("'phase10-v1'"),
+    )
+    requires_human_review: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default=text("false"),
+    )
+    error_message: Mapped[str | None] = mapped_column(Text)
     model_provider: Mapped[str] = mapped_column(String(100), nullable=False)
     model_name: Mapped[str] = mapped_column(String(255), nullable=False)
     model_version: Mapped[str | None] = mapped_column(String(120))
