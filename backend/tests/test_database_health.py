@@ -117,6 +117,21 @@ def test_database_health_hides_connection_errors(monkeypatch) -> None:
     }
 
 
+def test_database_health_handles_unavailable_psycopg_runtime(monkeypatch) -> None:
+    def unavailable_driver():
+        raise ImportError("PostgreSQL driver is unavailable")
+
+    monkeypatch.setattr(database_health, "get_engine", unavailable_driver)
+    response = get_response(
+        create_app(Settings()),
+        "/api/v1/health/database",
+    )
+
+    assert response.status_code == 503
+    assert response.json()["detail"]["database"] == "unavailable"
+    assert "PostgreSQL driver is unavailable" not in response.text
+
+
 def test_database_health_handles_missing_database_configuration(
     monkeypatch,
 ) -> None:
