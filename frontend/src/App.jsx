@@ -390,12 +390,13 @@ function ClaimWorkspace() {
   const [error, setError] = useState("");
   useEffect(() => {
     Promise.allSettled([
-      api.get(`/documents`, {}),
+      api.get(`/claims/${id}`),
       api.get(`/claims/${id}/evidence`),
       api.get(`/claims/${id}/sources`),
       api.get(`/claims/${id}/verification`),
       api.get(`/claims/${id}/verdict`),
     ]).then((responses) => {
+      if (responses[0].status === "fulfilled") setClaim(responses[0].value.data);
       const evidenceResponse = responses[1];
       const sourceResponse = responses[2];
       const verificationResponse = responses[3];
@@ -416,6 +417,7 @@ function ClaimWorkspace() {
       <div className="workspace-grid">
         <section className="panel">
           <div className="panel-heading"><h2>Claim</h2><span>{id}</span></div>
+          {claim && <h3 className="exact-claim">{claim.claim_text || claim.original_sentence}</h3>}
           {classification ? (
             <>
               <h3>{classification.claim_id}</h3>
@@ -544,5 +546,23 @@ function Settings() {
         {user ? <><p><strong>Name</strong><span>{user.full_name}</span></p><p><strong>Email</strong><span>{user.email}</span></p><p><strong>Role</strong><span>{user.role}</span></p></> : <Loading />}
       </section>
     </>
+  );
+}
+
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/" element={<Landing />} />
+      <Route path="/login" element={<AuthPage mode="login" />} />
+      <Route path="/register" element={<AuthPage mode="register" />} />
+      <Route path="/app" element={<Protected><Layout><Navigate to="/app/dashboard" replace /></Layout></Protected>} />
+      <Route path="/app/dashboard" element={<Protected><Layout><Dashboard /></Layout></Protected>} />
+      <Route path="/app/documents" element={<Protected><Layout><Documents /></Layout></Protected>} />
+      <Route path="/app/documents/:id" element={<Protected><Layout><DocumentDetail /></Layout></Protected>} />
+      <Route path="/app/claims/:id" element={<Protected><Layout><ClaimWorkspace /></Layout></Protected>} />
+      <Route path="/app/reviews" element={<Protected><Layout><Reviews /></Layout></Protected>} />
+      <Route path="/app/settings" element={<Protected><Layout><Settings /></Layout></Protected>} />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }
