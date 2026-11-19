@@ -16,6 +16,27 @@ class DocumentStatus(str, Enum):
     FAILED = "failed"
 
 
+class ExtractionStatus(str, Enum):
+    PENDING = "pending"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
+class RetrievalStatus(str, Enum):
+    PENDING = "pending"
+    METADATA_ONLY = "metadata_only"
+    FULL_TEXT_AVAILABLE = "full_text_available"
+    UNAVAILABLE = "unavailable"
+    FAILED = "failed"
+
+
+class VerificationStatus(str, Enum):
+    PENDING = "pending"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    NEEDS_REVIEW = "needs_review"
+
+
 class ClaimType(str, Enum):
     NUMERICAL = "numerical"
     STATISTICAL = "statistical"

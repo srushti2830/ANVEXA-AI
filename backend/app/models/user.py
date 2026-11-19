@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from sqlalchemy import Boolean, String, UniqueConstraint, text
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, synonym
 
 from backend.app.database.base import Base
 from backend.app.models.enums import UserRole, enum_column
@@ -14,7 +14,8 @@ class User(Base, UUIDPrimaryKey, TimestampMixin):
 
     email: Mapped[str] = mapped_column(String(320), nullable=False)
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
-    display_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    full_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    display_name = synonym("full_name")
     role: Mapped[UserRole] = mapped_column(
         enum_column(UserRole, "user_role"),
         nullable=False,
