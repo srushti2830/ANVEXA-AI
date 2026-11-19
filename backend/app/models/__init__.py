@@ -24,9 +24,11 @@ from backend.app.models.enums import (
     RetrievalStatus,
     ReviewAction,
     SourceVersionType,
+    UserRole,
     Verdict,
     VerificationStatus,
 )
+from backend.app.models.refresh_token import RefreshToken
 from backend.app.models.research import (
     Embedding,
     EvidencePassage,
@@ -63,6 +65,7 @@ __all__ = [
     "ProcessingJob",
     "ProcessingJobType",
     "ProcessingStatus",
+    "RefreshToken",
     "ReferenceIssue",
     "ReferenceIssueType",
     "Report",
@@ -75,6 +78,7 @@ __all__ = [
     "SourceVersionType",
     "User",
     "UserFeedback",
+    "UserRole",
     "Verdict",
     "VerificationStatus",
     "VerificationEvidence",
