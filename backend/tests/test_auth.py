@@ -18,6 +18,7 @@ from app.core.security import (
     rate_limiter,
 )
 from app.database.base import Base
+from app.database.connection import get_engine
 from app.database.session import get_db
 from app.main import create_app
 from app.models.enums import UserRole
