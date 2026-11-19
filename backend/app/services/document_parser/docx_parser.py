@@ -1,13 +1,13 @@
 """DOCX text extraction using python-docx.
 
-DOCX files lack physical page boundaries.  This module extracts all
-paragraphs and tables, then segments them into logical "pages" using
-a configurable character-count threshold to maintain a consistent
-page-based data model.
+Extracts paragraphs (with heading levels), tables, and document
+metadata.  Since DOCX files lack physical page boundaries, text is
+segmented into logical "pages" using a character-count threshold.
 """
 
 from __future__ import annotations
 
+import io
 import logging
 from dataclasses import dataclass, field
 
@@ -16,13 +16,22 @@ from docx.opc.exceptions import PackageNotFoundError
 
 logger = logging.getLogger(__name__)
 
-# Approximate characters per logical "page" for DOCX segmentation
+# Approximate characters per logical "page"
 _CHARS_PER_PAGE = 3000
 
 
 @dataclass(frozen=True)
+class TextBlock:
+    """A single paragraph or table block extracted from a DOCX."""
+
+    text: str
+    block_type: str  # "paragraph", "heading", "table"
+    heading_level: int | None = None  # 1–9 for headings, None otherwise
+
+
+@dataclass(frozen=True)
 class ParsedPage:
-    """Represents extracted content of a single logical page."""
+    """Extracted content of a single logical page."""
 
     page_number: int
     text: str
@@ -36,6 +45,10 @@ class ParsedDocument:
     pages: list[ParsedPage]
     total_pages: int
     metadata: dict[str, object] = field(default_factory=dict)
+    blocks: list[TextBlock] = field(default_factory=list)
+    headings: list[dict[str, object]] = field(default_factory=list)
+    ocr_pages: list[int] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
 
 
 def _extract_table_text(table) -> str:
@@ -47,83 +60,108 @@ def _extract_table_text(table) -> str:
     return "\n".join(rows)
 
 
+def _heading_level(style_name: str | None) -> int | None:
+    """Return heading level (1-9) if the style is a heading, else None."""
+    if not style_name:
+        return None
+    name = style_name.strip()
+    # python-docx heading styles: "Heading 1", "Heading 2", ...
+    if name.lower().startswith("heading "):
+        try:
+            return int(name.split()[-1])
+        except (ValueError, IndexError):
+            return None
+    return None
+
+
 def parse_docx(data: bytes) -> ParsedDocument:
     """Extract text from a DOCX file provided as raw bytes.
-
-    Paragraphs and tables are read in document order and segmented
-    into logical pages of approximately ``_CHARS_PER_PAGE`` characters.
 
     Args:
         data: Raw DOCX file bytes.
 
     Returns:
-        ParsedDocument with logical pages and metadata.
+        ParsedDocument with logical pages, blocks, headings, and metadata.
 
     Raises:
         ValueError: If the data cannot be parsed as a valid DOCX.
     """
-    import io
+    warnings: list[str] = []
 
     try:
         doc = DocxDocument(io.BytesIO(data))
-    except (PackageNotFoundError, Exception) as exc:
+    except PackageNotFoundError as exc:
+        raise ValueError(f"Cannot parse DOCX: file is corrupted or not a valid DOCX ({exc})") from exc
+    except Exception as exc:
         logger.error("Failed to open DOCX: %s", exc)
         raise ValueError(f"Cannot parse DOCX: {exc}") from exc
 
-    # Collect all text blocks in document order
-    # (paragraphs and tables interleaved)
-    blocks: list[str] = []
-    for element in doc.element.body:
-        tag = element.tag.split("}")[-1] if "}" in element.tag else element.tag
-        if tag == "p":
-            # Paragraph
-            text = element.text or ""
-            # For proper extraction, walk all runs
-            from docx.oxml.ns import qn
+    # --- Collect structured blocks ---
+    blocks: list[TextBlock] = []
+    headings: list[dict[str, object]] = []
 
-            runs_text = []
-            for run_el in element.iter(qn("w:t")):
-                runs_text.append(run_el.text or "")
-            paragraph_text = "".join(runs_text).strip()
-            if paragraph_text:
-                blocks.append(paragraph_text)
-        elif tag == "tbl":
-            # Table — use python-docx Table wrapper
-            from docx.table import Table
+    for paragraph in doc.paragraphs:
+        text = paragraph.text.strip()
+        if not text:
+            continue
 
-            table = Table(element, doc)
-            table_text = _extract_table_text(table)
-            if table_text.strip():
-                blocks.append(table_text)
+        style_name = paragraph.style.name if paragraph.style else None
+        level = _heading_level(style_name)
 
-    full_text = "\n\n".join(blocks)
+        if level is not None:
+            blocks.append(TextBlock(
+                text=text,
+                block_type="heading",
+                heading_level=level,
+            ))
+            headings.append({
+                "text": text,
+                "level": level,
+                "style": style_name,
+            })
+        else:
+            blocks.append(TextBlock(text=text, block_type="paragraph"))
 
-    # Document-level metadata
-    core_props = doc.core_properties
+    for table in doc.tables:
+        table_text = _extract_table_text(table)
+        if table_text.strip():
+            blocks.append(TextBlock(text=table_text, block_type="table"))
+
+    # --- Document-level metadata ---
     doc_metadata: dict[str, object] = {}
-    if core_props.title:
-        doc_metadata["title"] = core_props.title
-    if core_props.author:
-        doc_metadata["author"] = core_props.author
-    if core_props.subject:
-        doc_metadata["subject"] = core_props.subject
-    if core_props.keywords:
-        doc_metadata["keywords"] = core_props.keywords
+    try:
+        core = doc.core_properties
+        if core.title:
+            doc_metadata["title"] = core.title
+        if core.author:
+            doc_metadata["author"] = core.author
+        if core.subject:
+            doc_metadata["subject"] = core.subject
+        if core.keywords:
+            doc_metadata["keywords"] = core.keywords
+    except Exception:
+        pass  # core properties may be absent or malformed
 
-    doc_metadata["paragraph_count"] = len(blocks)
+    full_text = "\n\n".join(b.text for b in blocks)
+    doc_metadata["paragraph_count"] = sum(1 for b in blocks if b.block_type == "paragraph")
+    doc_metadata["heading_count"] = len(headings)
+    doc_metadata["table_count"] = sum(1 for b in blocks if b.block_type == "table")
     doc_metadata["total_chars"] = len(full_text)
+    doc_metadata["extraction_method"] = "python-docx"
 
-    # Segment into logical pages
+    if not blocks:
+        warnings.append("DOCX contains no extractable text.")
+
+    # --- Segment into logical pages ---
     pages: list[ParsedPage] = []
-    if full_text:
-        # Split by blocks, accumulate until we hit the threshold
+    if blocks:
         current_text: list[str] = []
         current_len = 0
         page_num = 1
 
         for block in blocks:
-            current_text.append(block)
-            current_len += len(block) + 2  # +2 for "\n\n" join
+            current_text.append(block.text)
+            current_len += len(block.text) + 2
 
             if current_len >= _CHARS_PER_PAGE:
                 page_text = "\n\n".join(current_text)
@@ -133,13 +171,13 @@ def parse_docx(data: bytes) -> ParsedDocument:
                     metadata={
                         "char_count": len(page_text),
                         "word_count": len(page_text.split()),
+                        "extraction_method": "python-docx",
                     },
                 ))
                 page_num += 1
                 current_text = []
                 current_len = 0
 
-        # Remaining text becomes the last page
         if current_text:
             page_text = "\n\n".join(current_text)
             pages.append(ParsedPage(
@@ -148,22 +186,23 @@ def parse_docx(data: bytes) -> ParsedDocument:
                 metadata={
                     "char_count": len(page_text),
                     "word_count": len(page_text.split()),
+                    "extraction_method": "python-docx",
                 },
             ))
     else:
-        # Empty document — single empty page
         pages.append(ParsedPage(
             page_number=1,
             text="",
-            metadata={"char_count": 0, "word_count": 0},
+            metadata={"char_count": 0, "word_count": 0, "extraction_method": "python-docx"},
         ))
 
     total_pages = len(pages)
     doc_metadata["total_pages"] = total_pages
 
     logger.info(
-        "DOCX parsed: %d logical pages, %d total chars",
+        "DOCX parsed: %d logical pages, %d blocks, %d chars",
         total_pages,
+        len(blocks),
         len(full_text),
     )
 
@@ -171,4 +210,8 @@ def parse_docx(data: bytes) -> ParsedDocument:
         pages=pages,
         total_pages=total_pages,
         metadata=doc_metadata,
+        blocks=blocks,
+        headings=headings,
+        ocr_pages=[],
+        warnings=warnings,
     )
