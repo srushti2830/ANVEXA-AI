@@ -9,6 +9,9 @@ from app.api.endpoints.claims import claim_router
 from app.api.endpoints.citations import document_router as citations_router
 from app.api.endpoints.citations import claim_router as claim_citations_router
 from app.api.endpoints.users import router as users_router
+from app.api.endpoints.sources import document_router as sources_router
+from app.api.endpoints.sources import claim_router as claim_sources_router
+from app.api.endpoints.sources import source_router as research_sources_router
 
 api_router = APIRouter()
 api_router.include_router(health_router)
@@ -20,3 +23,6 @@ api_router.include_router(claims_router)
 api_router.include_router(claim_router)
 api_router.include_router(citations_router)
 api_router.include_router(claim_citations_router)
+api_router.include_router(sources_router)
+api_router.include_router(claim_sources_router)
+api_router.include_router(research_sources_router)

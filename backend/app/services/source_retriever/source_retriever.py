@@ -21,7 +21,7 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies import verify_resource_ownership
 from app.core.config import get_settings
-from app.models.document import Citation, Document, DocumentVersion
+from app.models.document import Citation, Claim, ClaimCitation, Document, DocumentVersion
 from app.models.enums import (
     DocumentStatus,
     RetrievalStatus,
@@ -363,3 +363,96 @@ def retrieve_sources(document_id: UUID, current_user: User, db: Session) -> dict
         "extraction_method": "crossref_openalex_metadata",
         "sources": sources,
     }
+
+
+def list_document_sources(
+    document_id: UUID,
+    current_user: User,
+    db: Session,
+    page: int = 1,
+    per_page: int = 20,
+) -> dict:
+    doc = _owned_document(document_id, current_user, db)
+    version = _latest_version(doc, db)
+    citations = list(db.execute(
+        select(Citation)
+        .where(
+            Citation.document_version_id == version.id,
+            Citation.research_source_id.is_not(None),
+        )
+    ).scalars().all())
+    source_ids = list(dict.fromkeys(
+        citation.research_source_id
+        for citation in citations
+        if citation.research_source_id is not None
+    ))
+    if not source_ids:
+        all_sources: list[ResearchSource] = []
+    else:
+        all_sources = list(db.execute(
+            select(ResearchSource)
+            .where(ResearchSource.id.in_(source_ids))
+            .order_by(ResearchSource.created_at)
+        ).scalars().all())
+    offset = (page - 1) * per_page
+    return {
+        "document_id": doc.id,
+        "version_id": version.id,
+        "sources": all_sources[offset:offset + per_page],
+        "pagination": {
+            "total": len(all_sources),
+            "page": page,
+            "per_page": per_page,
+            "total_pages": (len(all_sources) + per_page - 1) // per_page,
+        },
+    }
+
+
+def list_claim_sources(
+    claim_id: UUID,
+    current_user: User,
+    db: Session,
+) -> list[ResearchSource]:
+    claim = db.execute(select(Claim).where(Claim.id == claim_id)).scalar_one_or_none()
+    if claim is None:
+        raise HTTPException(status_code=404, detail="Claim not found")
+    doc = db.execute(select(Document).where(Document.id == claim.document_id)).scalar_one_or_none()
+    if doc is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+    verify_resource_ownership(doc.user_id, current_user)
+    links = list(db.execute(
+        select(ClaimCitation).where(ClaimCitation.claim_id == claim_id)
+    ).scalars().all())
+    source_ids: list[UUID] = []
+    for link in links:
+        citation = db.get(Citation, link.citation_id)
+        if citation and citation.research_source_id:
+            source_ids.append(citation.research_source_id)
+    source_ids = list(dict.fromkeys(source_ids))
+    if not source_ids:
+        return []
+    return list(db.execute(
+        select(ResearchSource)
+        .where(ResearchSource.id.in_(source_ids))
+        .order_by(ResearchSource.created_at)
+    ).scalars().all())
+
+
+def get_source(source_id: UUID, current_user: User, db: Session) -> ResearchSource:
+    source = db.execute(
+        select(ResearchSource).where(ResearchSource.id == source_id)
+    ).scalar_one_or_none()
+    if source is None:
+        raise HTTPException(status_code=404, detail="Research source not found")
+    citation = db.execute(
+        select(Citation).where(Citation.research_source_id == source_id).limit(1)
+    ).scalar_one_or_none()
+    if citation is None:
+        raise HTTPException(status_code=404, detail="Research source not found")
+    doc = db.execute(
+        select(Document).where(Document.id == citation.document_id)
+    ).scalar_one_or_none()
+    if doc is None:
+        raise HTTPException(status_code=404, detail="Research source not found")
+    verify_resource_ownership(doc.user_id, current_user)
+    return source
