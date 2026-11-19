@@ -31,6 +31,7 @@ from backend.app.models import (
     DocumentPage,
     DocumentVersion,
     Embedding,
+    ReviewHistory,
     User,
     VerificationResult,
 )
@@ -38,6 +39,7 @@ from backend.app.models.enums import (
     CitationStyle,
     ClaimType,
     DocumentStatus,
+    ReviewAction,
     Verdict,
 )
 
@@ -321,11 +323,25 @@ def test_document_crud_filters_by_document_and_claim(db_session: Session) -> Non
         model_provider="test",
         model_name="test-model",
     )
+    review = create_record(
+        db_session,
+        ReviewHistory,
+        verification_result_id=verification.id,
+        reviewer_id=user.id,
+        action=ReviewAction.CHANGE_VERDICT,
+        original_ai_verdict=Verdict.NEEDS_REVIEW,
+        human_verdict=Verdict.SUPPORTED,
+        reviewer_comment="Reviewed with additional context.",
+    )
     db_session.commit()
 
     assert get_claims_by_document(db_session, document.id) == [claim]
     assert get_citations_by_document(db_session, document.id) == [citation]
     assert get_verification_results_by_claim(db_session, claim.id) == [verification]
+    assert review.original_ai_verdict == verification.verdict
+    assert review.human_verdict == Verdict.SUPPORTED
+    with pytest.raises(ValueError, match="cannot be deleted"):
+        delete_record(db_session, verification)
 
 
 def test_duplicate_document_content_is_rejected_per_owner(
