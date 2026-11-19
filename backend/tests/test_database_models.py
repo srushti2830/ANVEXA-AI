@@ -8,6 +8,7 @@ from sqlalchemy import create_engine, event
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+from pydantic import ValidationError
 
 from backend.app.core.embedding import EMBEDDING_DIMENSION, EMBEDDING_MODEL
 from backend.app.core.config import Settings
@@ -24,6 +25,7 @@ from backend.app.database.crud import (
     update_record,
 )
 from backend.app.database.connection import create_database_engine
+from backend.app.database.session import SessionLocal, get_db
 from backend.app.models import (
     Claim,
     Citation,
@@ -122,6 +124,34 @@ def test_database_url_is_redacted_from_settings_repr() -> None:
     assert settings.database_url is not None
     assert secret in settings.database_url.get_secret_value()
     assert secret not in repr(settings)
+
+
+def test_embedding_model_and_dimension_are_validated_together() -> None:
+    settings = Settings(
+        embedding_model="sentence-transformers/paraphrase-MiniLM-L3-v2",
+        embedding_dimension=384,
+    )
+
+    assert settings.embedding_dimension == 384
+    with pytest.raises(ValidationError, match="requires vector dimension"):
+        Settings(embedding_model=EMBEDDING_MODEL, embedding_dimension=768)
+
+
+def test_get_db_yields_a_session_bound_to_the_lazy_engine(monkeypatch) -> None:
+    engine = create_engine("sqlite+pysqlite:///:memory:")
+    monkeypatch.setattr(
+        "backend.app.database.session.get_engine",
+        lambda: engine,
+    )
+    dependency = get_db()
+
+    session = next(dependency)
+    try:
+        assert isinstance(session, SessionLocal.class_)
+        assert session.get_bind() is engine
+    finally:
+        dependency.close()
+        engine.dispose()
 
 
 def test_semantic_search_compiles_to_pgvector_cosine_query() -> None:
