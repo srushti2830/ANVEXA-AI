@@ -49,7 +49,7 @@
 
 ## Data-safety note
 
-Validation created dedicated test accounts, a synthetic document, related records, and report rows in Neon. No existing records were deleted. The test account password was reset only for the test account to reauthenticate after the local JWT-key change. Uploaded documents and secrets remain local and are excluded from the intended source push.
+Validation created dedicated test accounts, a synthetic document, related records, and report rows in Neon. No existing records were deleted. The test account password was reset only for the test account to reauthenticate after the local JWT-key change. The new validation DOCX and runtime uploads were not added to the commit; `.gitignore` now excludes future local uploads. Four small PDFs under `storage/documents/` were already tracked in the remote repository before this change and were not altered. No `.env` file or secret was included.
 
 ## Overall status
 
