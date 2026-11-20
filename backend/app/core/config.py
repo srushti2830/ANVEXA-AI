@@ -52,6 +52,13 @@ class Settings(BaseSettings):
 
     # Document Management
     document_storage_path: str = "./storage/documents"
+    object_storage_backend: Literal["local", "s3"] = "local"
+    s3_bucket: str | None = None
+    s3_region: str | None = None
+    s3_endpoint_url: str | None = None
+    s3_access_key_id: SecretStr | None = None
+    s3_secret_access_key: SecretStr | None = None
+    s3_prefix: str = "anvexa/documents"
     max_upload_size_bytes: int = Field(default=52_428_800, ge=1)  # 50 MB
     allowed_file_extensions: list[str] = Field(default=[".pdf", ".docx"])
     gemini_api_key: SecretStr | None = None
@@ -60,6 +67,8 @@ class Settings(BaseSettings):
     gemini_max_retries: int = Field(default=2, ge=0, le=5)
     crossref_api_url: str = "https://api.crossref.org"
     openalex_api_url: str = "https://api.openalex.org"
+    semantic_scholar_api_url: str = "https://api.semanticscholar.org"
+    europe_pmc_api_url: str = "https://www.ebi.ac.uk/europepmc/webservices/rest"
     source_retrieval_timeout_seconds: float = Field(default=15.0, ge=1.0, le=120.0)
     source_retrieval_max_retries: int = Field(default=2, ge=0, le=5)
 
@@ -120,6 +129,23 @@ class Settings(BaseSettings):
         if not self.dev_sqlite_url.startswith(("sqlite:", "sqlite+")):
             raise ValueError(
                 "ANVEXA_DEV_SQLITE_URL must use a SQLite SQLAlchemy URL."
+            )
+        return self
+
+    @model_validator(mode="after")
+    def validate_production_object_storage(self) -> Settings:
+        if self.environment != "production":
+            return self
+        if self.object_storage_backend != "s3":
+            raise ValueError(
+                "Production requires object storage; set "
+                "ANVEXA_OBJECT_STORAGE_BACKEND=s3."
+            )
+        if not self.s3_bucket:
+            raise ValueError("ANVEXA_S3_BUCKET is required in production.")
+        if self.s3_access_key_id is None or self.s3_secret_access_key is None:
+            raise ValueError(
+                "S3 credentials are required in production object storage."
             )
         return self
 

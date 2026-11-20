@@ -20,3 +20,4 @@ httpx>=0.27,<1.0
 sentence-transformers>=3.4,<6.0
 # Phase 13: PDF reports
 reportlab>=4.2,<5.0
+boto3>=1.35,<2.0

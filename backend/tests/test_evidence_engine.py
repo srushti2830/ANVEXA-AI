@@ -15,6 +15,7 @@ from app.models.enums import DocumentStatus
 from app.models.research import Embedding, EvidencePassage, ResearchSource, SourceVersion
 from app.models.user import User
 from app.services.evidence_engine.evidence_engine import (
+    _embedding_model,
     chunk_text,
     cosine_similarity,
     deduplicate_chunks,
@@ -99,6 +100,7 @@ def test_cosine_similarity_and_dimension() -> None:
 
 
 def test_embedding_generation_is_mockable(monkeypatch: pytest.MonkeyPatch) -> None:
+    _embedding_model.cache_clear()
     class FakeSentenceTransformer:
         def __init__(self, model_name: str) -> None:
             self.model_name = model_name
@@ -119,6 +121,7 @@ def test_embedding_generation_is_mockable(monkeypatch: pytest.MonkeyPatch) -> No
 
 
 def test_embedding_dimension_mismatch_is_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
+    _embedding_model.cache_clear()
     class WrongSentenceTransformer:
         def __init__(self, model_name: str) -> None:
             pass

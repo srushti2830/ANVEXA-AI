@@ -7,13 +7,20 @@ import {
   setRefreshToken,
 } from "./authStorage";
 
-export const API_BASE_URL =
+export const API_BASE_URL = (
   import.meta.env.VITE_API_BASE_URL ||
-  (import.meta.env.PROD ? "/api/v1" : "http://127.0.0.1:8000/api/v1");
+  (import.meta.env.PROD ? "" : "http://127.0.0.1:8000/api/v1")
+).replace(/\/$/, "");
+
+if (import.meta.env.PROD && !API_BASE_URL) {
+  throw new Error(
+    "VITE_API_BASE_URL must be configured for production builds.",
+  );
+}
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 30000,
+  timeout: 120000,
 });
 
 api.interceptors.request.use((config) => {

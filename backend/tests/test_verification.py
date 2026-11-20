@@ -6,6 +6,7 @@ from collections.abc import Iterator
 from uuid import uuid4
 
 import pytest
+import os
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import Session
 
@@ -134,6 +135,20 @@ def test_no_evidence_returns_needs_review(verification_db: Session) -> None:
     assert result.verification_status == VerificationStatus.NEEDS_REVIEW
     assert result.verdict == Verdict.NEEDS_REVIEW
     assert result.requires_human_review is True
+
+
+@pytest.mark.skipif(
+    not os.getenv("ANVEXA_GEMINI_API_KEY"),
+    reason="Live Gemini credential is not configured",
+)
+def test_live_gemini_verification_when_configured(verification_db: Session) -> None:
+    user, document, claim, passage = make_claim(verification_db, with_evidence=True)
+    assert passage is not None
+    result = verify_claim(claim.id, user, verification_db)
+    assert result.verdict in list(Verdict)
+    assert result.model_provider == "gemini"
+    assert set(result.supporting_evidence_ids).issubset({str(passage.id)})
+    assert set(result.contradicting_evidence_ids).issubset({str(passage.id)})
 
 
 def test_mocked_direct_support_with_evidence_ids(

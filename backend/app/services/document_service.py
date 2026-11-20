@@ -29,6 +29,7 @@ from app.schemas.document import (
     PaginationMeta,
 )
 from app.services.document_storage.local_storage import LocalStorageBackend
+from app.services.document_storage.s3_storage import S3StorageBackend
 from app.services.document_storage.storage_service import (
     StorageBackend,
     StorageError,
@@ -127,7 +128,25 @@ def get_storage_backend(settings: Settings | None = None) -> StorageBackend:
     if _storage_backend is None:
         if settings is None:
             settings = get_settings()
-        _storage_backend = LocalStorageBackend(settings.document_storage_path)
+        if settings.object_storage_backend == "s3":
+            _storage_backend = S3StorageBackend(
+                bucket=settings.s3_bucket or "",
+                region=settings.s3_region,
+                endpoint_url=settings.s3_endpoint_url,
+                access_key_id=(
+                    settings.s3_access_key_id.get_secret_value()
+                    if settings.s3_access_key_id
+                    else None
+                ),
+                secret_access_key=(
+                    settings.s3_secret_access_key.get_secret_value()
+                    if settings.s3_secret_access_key
+                    else None
+                ),
+                prefix=settings.s3_prefix,
+            )
+        else:
+            _storage_backend = LocalStorageBackend(settings.document_storage_path)
     return _storage_backend
 
 

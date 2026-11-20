@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterator
 
 import pytest
+import os
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import Session
 
@@ -143,6 +144,19 @@ def test_gemini_failure_uses_rule_based_path(monkeypatch: pytest.MonkeyPatch) ->
     assert error
     fallback = rule_based_extract(located)
     assert fallback
+
+
+@pytest.mark.skipif(
+    not os.getenv("ANVEXA_GEMINI_API_KEY"),
+    reason="Live Gemini credential is not configured",
+)
+def test_live_gemini_claim_extraction_when_configured() -> None:
+    located = locate_sentences({"pages": [{"page_number": 1, "text":
+        "The synthetic study reported that 75 percent of participants improved."}]})
+    claims, error = gemini_extract(located)
+    assert error is None
+    assert claims
+    assert all(claim["claim_text"] in located[0].text for claim in claims)
 
 
 def test_database_persistence_page_and_duplicate_identity(claim_db: Session) -> None:

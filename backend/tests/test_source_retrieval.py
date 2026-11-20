@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterator
 
 import pytest
+import os
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import Session
 
@@ -15,6 +16,9 @@ from app.models.research import ResearchSource, SourceVersion
 from app.models.user import User
 from app.services.source_retriever.source_retriever import (
     lookup_crossref_by_doi,
+    lookup_openalex_by_doi,
+    lookup_semantic_scholar_by_doi,
+    lookup_europe_pmc_by_doi,
     normalize_doi,
 )
 
@@ -133,6 +137,70 @@ def test_crossref_doi_lookup(monkeypatch: pytest.MonkeyPatch) -> None:
     assert metadata["authors"] == ["Ada Lovelace"]
     assert metadata["publication_year"] == 2024
     assert metadata["journal"] == "Test Journal"
+
+
+def test_semantic_scholar_doi_lookup(monkeypatch: pytest.MonkeyPatch) -> None:
+    response = {
+        "paperId": "abc123",
+        "title": "Semantic Scholar Test Article",
+        "authors": [{"name": "Ada Lovelace"}],
+        "year": 2024,
+        "venue": "Test Journal",
+        "doi": "10.1234/test",
+        "abstract": "A real provider abstract.",
+    }
+    monkeypatch.setattr(
+        "app.services.source_retriever.source_retriever._request_json",
+        lambda *args, **kwargs: response,
+    )
+    metadata = lookup_semantic_scholar_by_doi("10.1234/test")
+    assert metadata is not None
+    assert metadata["provider"] == "semantic_scholar"
+    assert metadata["title"] == "Semantic Scholar Test Article"
+    assert metadata["authors"] == ["Ada Lovelace"]
+
+
+def test_europe_pmc_doi_lookup(monkeypatch: pytest.MonkeyPatch) -> None:
+    response = {
+        "resultList": {
+            "result": [{
+                "id": "PMC123",
+                "pmcid": "PMC123",
+                "doi": "10.1234/test",
+                "title": "Europe PMC Test Article",
+                "authorString": "Smith A, Jones B",
+                "pubYear": "2024",
+                "journalTitle": "Test Journal",
+            }]
+        }
+    }
+    monkeypatch.setattr(
+        "app.services.source_retriever.source_retriever._request_json",
+        lambda *args, **kwargs: response,
+    )
+    metadata = lookup_europe_pmc_by_doi("10.1234/test")
+    assert metadata is not None
+    assert metadata["provider"] == "europe_pmc"
+    assert metadata["title"] == "Europe PMC Test Article"
+    assert metadata["publication_year"] == 2024
+
+
+@pytest.mark.skipif(
+    os.getenv("ANVEXA_LIVE_PROVIDER_TESTS") != "true",
+    reason="Live provider test mode is not enabled",
+)
+@pytest.mark.parametrize(
+    "lookup",
+    [
+        lookup_crossref_by_doi,
+        lookup_openalex_by_doi,
+        lookup_europe_pmc_by_doi,
+    ],
+)
+def test_live_provider_doi_lookup(lookup) -> None:
+    metadata = lookup("10.1038/sdata.2016.18")
+    assert metadata is not None
+    assert "FAIR" in metadata["title"]
 
 
 def test_missing_metadata_does_not_create_fabricated_source(

@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import logging
 import re
+from functools import lru_cache
 from html.parser import HTMLParser
 from typing import Iterable
 from uuid import UUID
@@ -235,15 +236,20 @@ def extract_full_text(url: str) -> tuple[list[tuple[str | None, int | None, str]
     ], "html_stdlib"
 
 
+@lru_cache(maxsize=1)
+def _embedding_model():
+    from sentence_transformers import SentenceTransformer
+    return SentenceTransformer(EMBEDDING_MODEL)
+
+
 def generate_embeddings(texts: list[str]) -> list[list[float]]:
     if not texts:
         return []
     try:
-        from sentence_transformers import SentenceTransformer
+        model = _embedding_model()
     except Exception as exc:
         raise RuntimeError("Sentence Transformers model is unavailable") from exc
     try:
-        model = SentenceTransformer(EMBEDDING_MODEL)
         vectors = model.encode(texts, batch_size=32, show_progress_bar=False)
     except Exception as exc:
         raise RuntimeError("Embedding model could not be loaded") from exc

@@ -230,6 +230,105 @@ def lookup_openalex_by_doi(doi: str) -> dict[str, Any] | None:
     }
 
 
+def lookup_semantic_scholar_by_doi(doi: str) -> dict[str, Any] | None:
+    clean_doi = normalize_doi(doi)
+    if not clean_doi:
+        return None
+    settings = get_settings()
+    encoded_doi = clean_doi.replace("/", "%2F")
+    data = _request_json(
+        f"{settings.semantic_scholar_api_url}/graph/v1/paper/DOI:{encoded_doi}",
+        {"fields": "title,authors,year,venue,externalIds,abstract,openAccessPdf,doi"},
+    )
+    if not data or not isinstance(data.get("title"), str):
+        return None
+    authors = [
+        author.get("name")
+        for author in (data.get("authors") or [])
+        if isinstance(author, dict) and isinstance(author.get("name"), str)
+    ]
+    external = data.get("externalIds") or {}
+    returned_doi = normalize_doi(
+        data.get("doi")
+        or (external.get("DOI") if isinstance(external, dict) else None)
+        or clean_doi
+    )
+    open_pdf = data.get("openAccessPdf") or {}
+    source_url = (
+        open_pdf.get("url")
+        if isinstance(open_pdf, dict) and isinstance(open_pdf.get("url"), str)
+        else f"https://doi.org/{returned_doi or clean_doi}"
+    )
+    return {
+        "doi": returned_doi,
+        "title": data["title"],
+        "authors": authors,
+        "publication_year": data.get("year") if isinstance(data.get("year"), int) else None,
+        "journal": data.get("venue") if isinstance(data.get("venue"), str) else None,
+        "source_url": source_url,
+        "abstract": data.get("abstract") if isinstance(data.get("abstract"), str) else None,
+        "provider": "semantic_scholar",
+        "provider_id": str(data.get("paperId") or returned_doi or clean_doi),
+        "raw": data,
+    }
+
+
+def lookup_europe_pmc_by_doi(doi: str) -> dict[str, Any] | None:
+    clean_doi = normalize_doi(doi)
+    if not clean_doi:
+        return None
+    settings = get_settings()
+    data = _request_json(
+        f"{settings.europe_pmc_api_url}/search",
+        {
+            "query": f'DOI:"{clean_doi}"',
+            "format": "json",
+            "pageSize": 5,
+        },
+    )
+    result_list = data.get("resultList", {})
+    results = result_list.get("result", []) if isinstance(result_list, dict) else []
+    if not isinstance(results, list):
+        return None
+    for item in results:
+        if not isinstance(item, dict):
+            continue
+        item_doi = normalize_doi(item.get("doi"))
+        if item_doi and item_doi != clean_doi:
+            continue
+        title = item.get("title")
+        if not isinstance(title, str) or not title.strip():
+            continue
+        pmcid = item.get("pmcid")
+        source_url = (
+            f"https://europepmc.org/articles/{pmcid}"
+            if isinstance(pmcid, str) and pmcid
+            else f"https://doi.org/{clean_doi}"
+        )
+        year = item.get("pubYear")
+        try:
+            publication_year = int(year) if year is not None else None
+        except (TypeError, ValueError):
+            publication_year = None
+        return {
+            "doi": item_doi or clean_doi,
+            "title": title,
+            "authors": [
+                name.strip()
+                for name in str(item.get("authorString") or "").split(",")
+                if name.strip()
+            ],
+            "publication_year": publication_year,
+            "journal": item.get("journalTitle") if isinstance(item.get("journalTitle"), str) else None,
+            "source_url": source_url,
+            "abstract": None,
+            "provider": "europe_pmc",
+            "provider_id": str(item.get("id") or pmcid or clean_doi),
+            "raw": item,
+        }
+    return None
+
+
 def retrieve_metadata(citation: Citation) -> dict[str, Any] | None:
     doi = normalize_doi(citation.doi)
     if doi:
@@ -237,6 +336,12 @@ def retrieve_metadata(citation: Citation) -> dict[str, Any] | None:
         if metadata:
             return metadata
         metadata = lookup_openalex_by_doi(doi)
+        if metadata:
+            return metadata
+        metadata = lookup_semantic_scholar_by_doi(doi)
+        if metadata:
+            return metadata
+        metadata = lookup_europe_pmc_by_doi(doi)
         if metadata:
             return metadata
     return lookup_crossref_by_query(citation)
