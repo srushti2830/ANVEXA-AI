@@ -5,7 +5,7 @@
 Backend:
 
 ```powershell
-.\.venv\Scripts\python.exe -m uvicorn backend.app.main:app --host 0.0.0.0 --port 8000
+.\.venv\Scripts\python.exe -m uvicorn --app-dir backend app.main:app --host 0.0.0.0 --port 8000
 ```
 
 Frontend:

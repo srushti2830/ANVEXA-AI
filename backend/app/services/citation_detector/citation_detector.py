@@ -290,20 +290,34 @@ def detect_citations(document_id: UUID, current_user: User, db: Session) -> dict
         citation_by_marker.setdefault(citation.normalized_marker or "", []).append(citation)
 
     for marker in detected:
-        citation = Citation(
-            document_id=doc.id,
-            document_version_id=version.id,
-            citation_text=marker.original,
-            original_marker=marker.original,
-            normalized_marker=marker.normalized,
-            citation_type=marker.style,
-            page_number=marker.page_number,
-            paragraph_number=marker.paragraph_index,
-            is_bibliography_entry=False,
-            extraction_method="rule_based",
+        citation = next(
+            (
+                existing
+                for existing in db.execute(
+                    select(Citation).where(
+                        Citation.document_version_id == version.id,
+                        Citation.normalized_marker == marker.normalized,
+                        Citation.citation_text == marker.original,
+                    )
+                ).scalars().all()
+            ),
+            None,
         )
-        db.add(citation)
-        db.flush()
+        if citation is None:
+            citation = Citation(
+                document_id=doc.id,
+                document_version_id=version.id,
+                citation_text=marker.original,
+                original_marker=marker.original,
+                normalized_marker=marker.normalized,
+                citation_type=marker.style,
+                page_number=marker.page_number,
+                paragraph_number=marker.paragraph_index,
+                is_bibliography_entry=False,
+                extraction_method="rule_based",
+            )
+            db.add(citation)
+            db.flush()
 
     db.flush()
 
@@ -365,20 +379,28 @@ def detect_citations(document_id: UUID, current_user: User, db: Session) -> dict
                     citation = None
 
             if citation is None:
-                unmapped_marker = Citation(
-                    document_id=doc.id,
-                    document_version_id=version.id,
-                    citation_text=marker.original,
-                    original_marker=marker.original,
-                    normalized_marker=marker.normalized,
-                    citation_type=marker.style,
-                    page_number=marker.page_number,
-                    paragraph_number=marker.paragraph_index,
-                    is_bibliography_entry=False,
-                    extraction_method="rule_based",
-                )
-                db.add(unmapped_marker)
-                db.flush()
+                unmapped_marker = db.execute(
+                    select(Citation).where(
+                        Citation.document_version_id == version.id,
+                        Citation.normalized_marker == marker.normalized,
+                        Citation.citation_text == marker.original,
+                    )
+                ).scalar_one_or_none()
+                if unmapped_marker is None:
+                    unmapped_marker = Citation(
+                        document_id=doc.id,
+                        document_version_id=version.id,
+                        citation_text=marker.original,
+                        original_marker=marker.original,
+                        normalized_marker=marker.normalized,
+                        citation_type=marker.style,
+                        page_number=marker.page_number,
+                        paragraph_number=marker.paragraph_index,
+                        is_bibliography_entry=False,
+                        extraction_method="rule_based",
+                    )
+                    db.add(unmapped_marker)
+                    db.flush()
                 citation = unmapped_marker
 
             existing = db.execute(

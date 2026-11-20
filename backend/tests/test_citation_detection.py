@@ -24,6 +24,7 @@ from app.models.enums import (
 )
 from app.models.user import User
 from app.services.citation_detector.citation_detector import (
+    detect_citations,
     detect_markers,
     extract_reference_entry,
     normalize_marker,
@@ -176,3 +177,15 @@ def test_database_mapping_persistence_and_duplicate_guard(citation_db: Session) 
     citation_db.commit()
     assert citation_db.query(ClaimCitation).count() == 1
     assert citation_db.query(Citation).one().normalized_marker == "numeric:1"
+
+
+def test_repeated_doi_markers_are_deduplicated(citation_db: Session) -> None:
+    user, document, version = make_parsed_document(
+        citation_db,
+        "The DOI is 10.1038/sdata.2016.18.\n\n"
+        "This later passage repeats DOI 10.1038/sdata.2016.18.",
+    )
+    result = detect_citations(document.id, user, citation_db)
+
+    assert result["detected_count"] == 1
+    assert citation_db.query(Citation).count() == 1

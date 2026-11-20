@@ -17,4 +17,10 @@ __pycache__/
 .venv/
 **/.venv/
 venv/
+/storage/anvexa-dev.sqlite3
+/storage/anvexa-dev.sqlite3-journal
+/storage/anvexa-dev.sqlite3-wal
+/storage/anvexa-dev.sqlite3-shm
+/storage/documents/
+/backend/storage/
 

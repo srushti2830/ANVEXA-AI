@@ -27,6 +27,14 @@ def database_health() -> dict[str, str]:
             },
         ) from error
 
+    if health.development_sqlite:
+        return {
+            "status": "ok",
+            "database": "ok",
+            "pgvector": "not_applicable",
+            "vector_search": "development_in_process_cosine",
+        }
+
     if not health.pgvector_available:
         raise HTTPException(
             status_code=503,

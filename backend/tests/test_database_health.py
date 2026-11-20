@@ -2,12 +2,13 @@ import asyncio
 
 import httpx
 from fastapi import FastAPI
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.pool import StaticPool
 
 from app.core.config import Settings
 from app.database import health as database_health
+from app.database.connection import create_database_engine
 from app.database.session import SessionLocal, get_db
 from app.main import create_app
 
@@ -46,23 +47,13 @@ def test_session_dependency_uses_injected_engine(monkeypatch) -> None:
 
 
 def test_database_health_reports_connection_and_pgvector(monkeypatch) -> None:
-    engine = create_engine(
-        "sqlite+pysqlite:///:memory:",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-    with engine.begin() as connection:
-        connection.execute(text("CREATE TABLE pg_extension (extname TEXT)"))
-        connection.execute(
-            text("INSERT INTO pg_extension (extname) VALUES ('vector')")
-        )
+    engine = _postgres_health_engine(pgvector_available=True)
     monkeypatch.setattr(database_health, "get_engine", lambda: engine)
 
     response = get_response(
-        create_app(Settings()),
+        create_app(Settings(_env_file=None)),
         "/api/v1/health/database",
     )
-    engine.dispose()
 
     assert response.status_code == 200
     assert response.json() == {
@@ -73,24 +64,80 @@ def test_database_health_reports_connection_and_pgvector(monkeypatch) -> None:
 
 
 def test_database_health_reports_missing_pgvector(monkeypatch) -> None:
-    engine = create_engine(
-        "sqlite+pysqlite:///:memory:",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-    with engine.begin() as connection:
-        connection.execute(text("CREATE TABLE pg_extension (extname TEXT)"))
+    engine = _postgres_health_engine(pgvector_available=False)
     monkeypatch.setattr(database_health, "get_engine", lambda: engine)
 
     response = get_response(
-        create_app(Settings()),
+        create_app(Settings(_env_file=None)),
         "/api/v1/health/database",
     )
-    engine.dispose()
 
     assert response.status_code == 503
     assert response.json()["detail"]["database"] == "ok"
     assert response.json()["detail"]["pgvector"] == "unavailable"
+
+
+def test_sqlite_development_health_does_not_claim_pgvector(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    database_url = f"sqlite+pysqlite:///{tmp_path / 'health.sqlite3'}"
+    settings = Settings(
+        _env_file=None,
+        dev_database_mode=True,
+        dev_sqlite_url=database_url,
+    )
+    engine = create_database_engine(database_url)
+    monkeypatch.setattr(database_health, "get_engine", lambda: engine)
+    monkeypatch.setattr(database_health, "get_settings", lambda: settings)
+
+    try:
+        response = get_response(
+            create_app(settings),
+            "/api/v1/health/database",
+        )
+    finally:
+        engine.dispose()
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "status": "ok",
+        "database": "ok",
+        "pgvector": "not_applicable",
+        "vector_search": "development_in_process_cosine",
+    }
+
+
+def _postgres_health_engine(pgvector_available: bool):
+    class Result:
+        def __init__(self, value):
+            self.value = value
+
+        def scalar_one(self):
+            return self.value
+
+    class Connection:
+        class Dialect:
+            name = "postgresql"
+
+        dialect = Dialect()
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return None
+
+        def execute(self, statement):
+            if "pg_extension" in str(statement):
+                return Result(pgvector_available)
+            return Result(1)
+
+    class Engine:
+        def connect(self):
+            return Connection()
+
+    return Engine()
 
 
 def test_database_health_hides_connection_errors(monkeypatch) -> None:

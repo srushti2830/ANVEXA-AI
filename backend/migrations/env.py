@@ -22,6 +22,12 @@ settings = get_settings()
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
+if settings.dev_database_mode and not context.is_offline_mode():
+    raise RuntimeError(
+        "Alembic migrations target PostgreSQL. SQLite development mode "
+        "creates tables from SQLAlchemy metadata and does not apply migrations."
+    )
+
 if settings.database_url is None:
     raise RuntimeError(
         "ANVEXA_DATABASE_URL must be configured before running Alembic."

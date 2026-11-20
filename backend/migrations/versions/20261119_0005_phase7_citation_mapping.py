@@ -52,7 +52,7 @@ def upgrade() -> None:
         ["claim_id", "citation_id"],
     )
 
-    op.drop_constraint("ck_citations_citation_type_citation_style", "citations", type_="check")
+    op.drop_constraint("citation_style", "citations", type_="check")
     op.create_check_constraint(
         "ck_citations_citation_type_citation_style",
         "citations",

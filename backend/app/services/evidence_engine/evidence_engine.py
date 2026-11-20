@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import hashlib
 import logging
-import math
 import re
 from html.parser import HTMLParser
 from typing import Iterable
@@ -20,6 +19,7 @@ from sqlalchemy.orm import Session
 from app.api.dependencies import verify_resource_ownership
 from app.core.config import get_settings
 from app.core.embedding import EMBEDDING_DIMENSION, EMBEDDING_MODEL
+from app.core.vector_math import cosine_similarity
 from app.models.document import Citation, Claim, Document, DocumentVersion
 from app.models.enums import DocumentStatus, EvidenceContentType
 from app.models.enums import SourceVersionType
@@ -256,17 +256,6 @@ def generate_embeddings(texts: list[str]) -> list[list[float]]:
             )
         result.append(values)
     return result
-
-
-def cosine_similarity(left: list[float], right: list[float]) -> float:
-    if len(left) != len(right) or not left:
-        return 0.0
-    dot = sum(a * b for a, b in zip(left, right))
-    left_norm = math.sqrt(sum(a * a for a in left))
-    right_norm = math.sqrt(sum(b * b for b in right))
-    if left_norm == 0 or right_norm == 0:
-        return 0.0
-    return max(-1.0, min(1.0, dot / (left_norm * right_norm)))
 
 
 def _owned_document(document_id: UUID, current_user: User, db: Session) -> Document:

@@ -27,17 +27,15 @@ class Settings(BaseSettings):
     api_v1_prefix: str = Field(default="/api/v1", pattern=r"^/")
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
     database_url: SecretStr | None = None
+    dev_database_mode: bool = False
+    dev_sqlite_url: str = "sqlite+pysqlite:///./storage/anvexa-dev.sqlite3"
     database_pool_size: int = Field(default=5, ge=1)
     database_max_overflow: int = Field(default=10, ge=0)
     embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
     embedding_dimension: int = Field(default=384, ge=1, le=2000)
 
     # Authentication & Security
-    jwt_secret_key: SecretStr = Field(
-        default=SecretStr(
-            "anvexa-super-secret-key-for-development-only-change-in-prod-32bytes!"
-        )
-    )
+    jwt_secret_key: SecretStr = Field(min_length=32)
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = Field(default=30, ge=1)
     refresh_token_expire_days: int = Field(default=7, ge=1)
@@ -64,6 +62,16 @@ class Settings(BaseSettings):
     openalex_api_url: str = "https://api.openalex.org"
     source_retrieval_timeout_seconds: float = Field(default=15.0, ge=1.0, le=120.0)
     source_retrieval_max_retries: int = Field(default=2, ge=0, le=5)
+
+    @property
+    def active_database_url(self) -> str | None:
+        if self.dev_database_mode:
+            return self.dev_sqlite_url
+        return (
+            self.database_url.get_secret_value()
+            if self.database_url is not None
+            else None
+        )
 
     @field_validator("cors_origins", mode="before")
     @classmethod
@@ -97,6 +105,21 @@ class Settings(BaseSettings):
             raise ValueError(
                 f"{self.embedding_model} requires vector dimension "
                 f"{expected_dimension}."
+            )
+        return self
+
+    @model_validator(mode="after")
+    def validate_development_database_configuration(self) -> Settings:
+        if not self.dev_database_mode:
+            return self
+        if self.environment != "development":
+            raise ValueError(
+                "ANVEXA_DEV_DATABASE_MODE is allowed only when "
+                "ANVEXA_ENVIRONMENT=development."
+            )
+        if not self.dev_sqlite_url.startswith(("sqlite:", "sqlite+")):
+            raise ValueError(
+                "ANVEXA_DEV_SQLITE_URL must use a SQLite SQLAlchemy URL."
             )
         return self
 

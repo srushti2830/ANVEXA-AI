@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 
 import pytest
 from fastapi import HTTPException
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine, event, select
 from sqlalchemy.orm import Session
 
 from app.database.base import Base
@@ -160,6 +160,29 @@ def test_document_report_traceability(report_db: Session) -> None:
     assert report["claim_reports"][0]["page_number"] == 4
     assert report["claim_reports"][0]["supporting_evidence"][0]["doi"] == "10.1234/report"
     assert report["claim_reports"][0]["limitations"] == ["Full text was unavailable."]
+
+
+def test_document_report_counts_source_level_evidence(report_db: Session) -> None:
+    owner, document, claim, result = make_report_fixture(report_db)
+    existing_passage = report_db.scalar(
+        select(EvidencePassage).where(EvidencePassage.claim_id == claim.id)
+    )
+    source_version = report_db.get(SourceVersion, existing_passage.source_version_id)
+    report_db.add(EvidencePassage(
+        source_id=source_version.source_id,
+        source_version_id=source_version.id,
+        passage_index=2,
+        passage_text="A separately extracted source-level abstract passage.",
+        section_name="Abstract",
+        content_type="abstract",
+        extraction_method="source_metadata_abstract",
+        passage_hash="e" * 64,
+    ))
+    report_db.commit()
+
+    report = build_document_report(document.id, owner, report_db)
+
+    assert report["total_evidence_passages"] == 2
 
 
 def test_claim_report_preserves_ai_human_separation(report_db: Session) -> None:

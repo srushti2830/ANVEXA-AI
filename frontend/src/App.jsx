@@ -8,6 +8,7 @@ import {
   setAccessToken,
   setRefreshToken,
 } from "./authStorage";
+import DemoMode from "./DemoMode";
 
 const verdictLabels = [
   "SUPPORTED",
@@ -112,6 +113,7 @@ function Landing() {
         <div className="hero-actions">
           <Link className="button" to="/register">Start verification</Link>
           <Link className="button secondary" to="/login">Open workspace</Link>
+          {import.meta.env.DEV && <Link className="button demo-entry" to="/demo/dashboard">Enter prepared demo</Link>}
         </div>
       </section>
       <section className="capability-grid">
@@ -175,6 +177,7 @@ function AuthPage({ mode }) {
         <label>Password<input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required minLength={8} /></label>
         {error && <div className="error-box">{error}</div>}
         <button className="button full" disabled={busy}>{busy ? "Please wait..." : mode === "register" ? "Create account" : "Sign in"}</button>
+        {import.meta.env.DEV && <Link className="demo-auth-link" to="/demo/dashboard">Explore the prepared demo without an account</Link>}
         <p className="auth-switch">
           {mode === "register" ? "Already have an account?" : "New to ANVEXA?"}
           <Link to={mode === "register" ? "/login" : "/register"}>{mode === "register" ? " Sign in" : " Create account"}</Link>
@@ -634,6 +637,7 @@ export default function App() {
       <Route path="/" element={<Landing />} />
       <Route path="/login" element={<AuthPage mode="login" />} />
       <Route path="/register" element={<AuthPage mode="register" />} />
+      {import.meta.env.DEV && <Route path="/demo/*" element={<DemoMode />} />}
       <Route path="/app" element={<Protected><Layout><Navigate to="/app/dashboard" replace /></Layout></Protected>} />
       <Route path="/app/dashboard" element={<Protected><Layout><Dashboard /></Layout></Protected>} />
       <Route path="/app/documents" element={<Protected><Layout><Documents /></Layout></Protected>} />

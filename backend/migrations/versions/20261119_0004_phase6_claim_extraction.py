@@ -22,7 +22,7 @@ def upgrade() -> None:
     op.add_column("claims", sa.Column("extraction_reason", sa.Text(), nullable=True))
 
     op.drop_constraint(
-        "ck_claims_claim_type_claim_type",
+        "claim_type",
         "claims",
         type_="check",
     )

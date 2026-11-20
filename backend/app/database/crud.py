@@ -6,6 +6,7 @@ from sqlalchemy import Select, inspect, select
 from sqlalchemy.orm import Session
 
 from app.core.embedding import EMBEDDING_DIMENSION, EMBEDDING_MODEL
+from app.core.vector_math import cosine_similarity
 from app.database.base import Base
 from app.models.audit import AuditLog
 from app.models.document import Claim, Citation, Document
@@ -176,4 +177,22 @@ def search_similar_evidence(
     limit: int = 10,
 ) -> list[EvidencePassage]:
     statement = similar_evidence_query(query_vector, limit)
+    if session.get_bind().dialect.name == "sqlite":
+        candidates = session.execute(
+            select(EvidencePassage, Embedding.vector)
+            .join(
+                Embedding,
+                Embedding.evidence_passage_id == EvidencePassage.id,
+            )
+            .where(Embedding.model_name == EMBEDDING_MODEL)
+        ).all()
+        ranked = sorted(
+            (
+                (passage, cosine_similarity(query_vector, vector))
+                for passage, vector in candidates
+            ),
+            key=lambda item: item[1],
+            reverse=True,
+        )
+        return [passage for passage, _score in ranked[:limit]]
     return list(session.scalars(statement).all())

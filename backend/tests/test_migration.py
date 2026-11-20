@@ -72,6 +72,7 @@ def test_auth_migration_renders_postgresql_schema_offline() -> None:
 def test_phase10_through_phase13_migrations_render_offline() -> None:
     repository_root = Path(__file__).resolve().parents[2]
     environment = os.environ.copy()
+    environment["ANVEXA_DEV_DATABASE_MODE"] = "true"
     environment["ANVEXA_DATABASE_URL"] = (
         "postgresql+psycopg://user:password@localhost:5432/anvexa_db"
     )
@@ -93,7 +94,15 @@ def test_phase10_through_phase13_migrations_render_offline() -> None:
         text=True,
     )
     assert "request_investigation" in result.stdout
+    assert "20261119_0010" in result.stdout
     assert "ALTER TABLE review_history DROP CONSTRAINT review_action" in result.stdout
     assert "action IN ('accept_ai', 'reject_ai'" in result.stdout
     assert "ALTER TABLE reports DROP CONSTRAINT report_format" in result.stdout
     assert "format IN ('pdf', 'csv', 'json')" in result.stdout
+    assert "ALTER TABLE documents DROP CONSTRAINT document_status" in result.stdout
+    assert "ALTER TABLE claims DROP CONSTRAINT claim_type" in result.stdout
+    assert "ALTER TABLE citations DROP CONSTRAINT citation_style" in result.stdout
+    assert "20261119_0011" in result.stdout
+    assert "ALTER TABLE claims ALTER COLUMN claim_type TYPE VARCHAR(15)" in result.stdout
+    assert "ALTER TABLE review_history ALTER COLUMN action TYPE VARCHAR(21)" in result.stdout
+    assert "ALTER TABLE reports ALTER COLUMN format TYPE VARCHAR(4)" in result.stdout

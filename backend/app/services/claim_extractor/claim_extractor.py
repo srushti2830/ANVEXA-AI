@@ -338,14 +338,20 @@ def extract_claims(document_id: UUID, current_user: User, db: Session) -> dict:
         ai_claims = rule_based_extract(located)
         method = "rule_based"
 
-    sentence_lookup = {
-        item.text.strip().lower(): item
-        for item in located
-    }
+    sentence_lookup: dict[str, list[LocatedSentence]] = {}
+    for item in located:
+        sentence_lookup.setdefault(item.text.strip().lower(), []).append(item)
+    sentence_occurrences: dict[str, int] = {}
+    created_claim_keys: set[tuple[int, int, str]] = set()
     created: list[Claim] = []
     for result in ai_claims:
         claim_text = str(result["claim_text"]).strip()
-        location = sentence_lookup.get(claim_text.lower())
+        lookup_key = claim_text.lower()
+        matches = sentence_lookup.get(lookup_key, [])
+        occurrence = sentence_occurrences.get(lookup_key, 0)
+        location = matches[occurrence] if occurrence < len(matches) else None
+        if location is not None:
+            sentence_occurrences[lookup_key] = occurrence + 1
         if location is None:
             for item in located:
                 if claim_text.lower() in item.text.lower():
@@ -353,6 +359,14 @@ def extract_claims(document_id: UUID, current_user: User, db: Session) -> dict:
                     break
         if location is None:
             continue
+        claim_key = (
+            location.page_number,
+            location.paragraph_index,
+            claim_text,
+        )
+        if claim_key in created_claim_keys:
+            continue
+        created_claim_keys.add(claim_key)
         claim_type = ClaimType(result.get("claim_type", "other"))
         claim = Claim(
             document_id=doc.id,

@@ -1,8 +1,39 @@
 # ANVEXA AI backend
 
 The backend uses FastAPI, SQLAlchemy 2.x, PostgreSQL, pgvector, Alembic, and
-Psycopg 3. This phase establishes database infrastructure only; it does not
-implement authentication, document processing, or AI verification.
+Psycopg 3 for production. It also provides an explicitly enabled SQLite mode
+for local development when PostgreSQL is unavailable. Authentication,
+document processing, evidence retrieval, verification, human review, and report
+services use the existing application models and endpoints in either mode.
+
+## Temporary local development database
+
+For local development only, SQLite can persist the existing SQLAlchemy models
+without changing the production PostgreSQL configuration. Enable it explicitly
+in the ignored `backend/.env`:
+
+```dotenv
+ANVEXA_ENVIRONMENT=development
+ANVEXA_DEV_DATABASE_MODE=true
+ANVEXA_DEV_SQLITE_URL=sqlite+pysqlite:///./storage/anvexa-dev.sqlite3
+```
+
+Start the backend from the repository root so the relative URL resolves to
+`storage/anvexa-dev.sqlite3`:
+
+```powershell
+.\.venv\Scripts\python.exe -m uvicorn --app-dir backend app.main:app --reload --host 127.0.0.1 --port 8000
+```
+
+The application creates missing tables from SQLAlchemy metadata and preserves
+existing rows; it does not run Alembic migrations or enable pgvector on SQLite.
+Vector values are stored as JSON and evidence similarity uses the real local
+Sentence Transformers vectors with in-process cosine ranking. The health
+endpoint identifies this mode as `development_in_process_cosine`.
+
+This mode is rejected when `ANVEXA_ENVIRONMENT` is not `development`. It is not
+a PostgreSQL or pgvector substitute and must not be used for production. The
+normal PostgreSQL URL and production Alembic path remain unchanged.
 
 ## Requirements
 

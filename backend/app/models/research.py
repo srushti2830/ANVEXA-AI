@@ -238,7 +238,7 @@ class Embedding(Base, UUIDPrimaryKey, TimestampMixin):
             postgresql_using="hnsw",
             postgresql_with={"m": 16, "ef_construction": 64},
             postgresql_ops={"vector": "vector_cosine_ops"},
-        ),
+        ).ddl_if(dialect="postgresql"),
     )
 
     evidence_passage_id: Mapped[UUID | None] = mapped_column(
@@ -253,7 +253,7 @@ class Embedding(Base, UUIDPrimaryKey, TimestampMixin):
         unique=True,
     )
     vector: Mapped[list[float]] = mapped_column(
-        Vector(EMBEDDING_DIMENSION),
+        Vector(EMBEDDING_DIMENSION).with_variant(JSON(), "sqlite"),
         nullable=False,
     )
     model_name: Mapped[str] = mapped_column(

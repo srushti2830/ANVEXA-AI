@@ -14,6 +14,7 @@ from app.models.enums import ClaimType, DocumentStatus, ExtractionStatus
 from app.models.user import User
 from app.services.claim_extractor.claim_extractor import (
     detect_citation_markers,
+    extract_claims,
     gemini_extract,
     locate_sentences,
     rule_based_extract,
@@ -179,3 +180,44 @@ def test_database_persistence_page_and_duplicate_identity(claim_db: Session) -> 
     assert persisted.page_number == 3
     assert persisted.citation_markers == ["[1]"]
     assert persisted.section_heading == "Results"
+
+
+def test_identical_claims_on_different_pages_keep_distinct_locations(
+    claim_db: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    user, document, version = make_document(claim_db)
+    repeated_claim = "The study found that 75 percent of participants improved."
+    claim_db.add_all([
+        DocumentPage(
+            document_id=document.id,
+            document_version_id=version.id,
+            page_number=1,
+            extracted_text=repeated_claim,
+            metadata_json={},
+        ),
+        DocumentPage(
+            document_id=document.id,
+            document_version_id=version.id,
+            page_number=2,
+            extracted_text=repeated_claim,
+            metadata_json={},
+        ),
+    ])
+    claim_db.commit()
+    monkeypatch.setattr(
+        "app.services.claim_extractor.claim_extractor.get_settings",
+        lambda: type("Settings", (), {"gemini_api_key": None})(),
+    )
+
+    response = extract_claims(document.id, user, claim_db)
+    persisted = (
+        claim_db.query(Claim)
+        .filter_by(document_version_id=version.id)
+        .order_by(Claim.page_number)
+        .all()
+    )
+
+    assert response["extracted_count"] == 2
+    assert [claim.page_number for claim in persisted] == [1, 2]
+    assert all(claim.normalized_text == repeated_claim for claim in persisted)

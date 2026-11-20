@@ -1,0 +1,187 @@
+{
+  "notice": "DEMO MODE — Prepared demonstration data. Live database and external provider integrations are not active.",
+  "document": {
+    "id": "demo-document-001",
+    "title": "Condition A and Outcome B: an illustrative scenario brief",
+    "filename": "prepared-illustrative-brief.demo",
+    "classification": "Synthetic academic-style example; not a real publication or uploaded PDF",
+    "sections": [
+      {
+        "heading": "Purpose",
+        "text": "This prepared scenario demonstrates claim traceability. All conditions, measurements, passages, and reference markers below are synthetic and make no claim about real research."
+      },
+      {
+        "heading": "Illustrative result",
+        "text": "In the synthetic example dataset, Condition A is associated with a 10% increase in Outcome B. The prepared evidence describes only this outcome and does not establish effects across other outcomes or populations.",
+        "citationMarker": "[DEMO-CIT-A]"
+      },
+      {
+        "heading": "Illustrative limitation",
+        "text": "The scenario does not provide enough information about sample size, methods, or population coverage to support a universal conclusion.",
+        "citationMarker": "[DEMO-CIT-B]"
+      },
+      {
+        "heading": "Illustrative time context",
+        "text": "A fictional scenario baseline is labeled 2011. The fixture contains no real publication date or current comparison.",
+        "citationMarker": "[DEMO-CIT-C]"
+      }
+    ]
+  },
+  "sourceRecords": [
+    {
+      "id": "DEMO-SRC-001",
+      "label": "Synthetic evidence record A",
+      "recordType": "Prepared illustrative fixture — not a publication",
+      "providerStatus": "No external provider queried",
+      "identifier": "No DOI or external identifier",
+      "summary": "A fabricated scenario record describing the Condition A and Outcome B relationship for demonstration only."
+    },
+    {
+      "id": "DEMO-SRC-002",
+      "label": "Synthetic evidence record B",
+      "recordType": "Prepared illustrative fixture — not a publication",
+      "providerStatus": "No external provider queried",
+      "identifier": "No DOI or external identifier",
+      "summary": "A fabricated scenario note with a fictional 2011 baseline and no current comparison."
+    }
+  ],
+  "citations": [
+    {
+      "marker": "[DEMO-CIT-A]",
+      "sourceIds": ["DEMO-SRC-001"],
+      "mappingNote": "Illustrative marker mapped to a synthetic fixture; not a bibliographic citation."
+    },
+    {
+      "marker": "[DEMO-CIT-B]",
+      "sourceIds": [],
+      "mappingNote": "Illustrative marker has no mapped source in the prepared fixture."
+    },
+    {
+      "marker": "[DEMO-CIT-C]",
+      "sourceIds": ["DEMO-SRC-002"],
+      "mappingNote": "Illustrative marker mapped to a synthetic fixture; not a bibliographic citation."
+    }
+  ],
+  "claims": [
+    {
+      "id": "claim-supported",
+      "text": "In the synthetic example, Condition A is associated with a 10% increase in Outcome B.",
+      "page": 1,
+      "section": "Illustrative result",
+      "citationMarker": "[DEMO-CIT-A]",
+      "sourceIds": ["DEMO-SRC-001"],
+      "evidence": [
+        {
+          "sourceId": "DEMO-SRC-001",
+          "passage": "Synthetic illustrative passage, not a quotation: the prepared scenario records Condition A alongside a 10% increase in Outcome B.",
+          "kind": "Synthetic fixture"
+        }
+      ],
+      "verdict": "SUPPORTED",
+      "explanation": "The prepared synthetic passage directly matches the narrow association stated in this claim.",
+      "limitations": [
+        "This is support only within the invented scenario, not evidence about the real world.",
+        "Association in this fixture does not establish causation."
+      ]
+    },
+    {
+      "id": "claim-partly-supported",
+      "text": "Condition A improves every measured outcome in the illustrative scenario.",
+      "page": 1,
+      "section": "Illustrative result",
+      "citationMarker": "[DEMO-CIT-A]",
+      "sourceIds": ["DEMO-SRC-001"],
+      "evidence": [
+        {
+          "sourceId": "DEMO-SRC-001",
+          "passage": "Synthetic illustrative passage, not a quotation: the prepared scenario describes Outcome B only; it contains no results for other outcomes.",
+          "kind": "Synthetic fixture"
+        }
+      ],
+      "verdict": "PARTLY_SUPPORTED",
+      "explanation": "The fixture supports a statement about Outcome B only. It does not establish the broader claim about every outcome.",
+      "limitations": [
+        "The evidence scope is narrower than the claim.",
+        "No real study or external source was consulted."
+      ]
+    },
+    {
+      "id": "claim-unsupported",
+      "text": "The prepared evidence establishes a 10% improvement in Measure Q.",
+      "page": 1,
+      "section": "Illustrative limitation",
+      "citationMarker": "[DEMO-CIT-B]",
+      "sourceIds": [],
+      "evidence": [],
+      "verdict": "UNSUPPORTED",
+      "explanation": "The prepared fixture contains no evidence about Measure Q, so this claim is not established by the material shown.",
+      "limitations": [
+        "Missing evidence is not proof that the claim is false.",
+        "A real assessment would require appropriate sources."
+      ]
+    },
+    {
+      "id": "claim-contradictory",
+      "text": "In the synthetic example, Condition A is associated with a 10% decrease in Outcome B.",
+      "page": 1,
+      "section": "Illustrative result",
+      "citationMarker": "[DEMO-CIT-A]",
+      "sourceIds": ["DEMO-SRC-001"],
+      "evidence": [
+        {
+          "sourceId": "DEMO-SRC-001",
+          "passage": "Synthetic illustrative passage, not a quotation: the prepared scenario specifies an increase, not a decrease, in Outcome B.",
+          "kind": "Synthetic fixture"
+        }
+      ],
+      "verdict": "CONTRADICTORY",
+      "explanation": "The direction in the claim conflicts with the direction specified by the synthetic passage.",
+      "limitations": [
+        "The conflict exists only between two statements in this illustrative fixture.",
+        "No real-world conclusion follows."
+      ]
+    },
+    {
+      "id": "claim-outdated",
+      "text": "The fictional 2011 baseline represents conditions in 2025.",
+      "page": 1,
+      "section": "Illustrative time context",
+      "citationMarker": "[DEMO-CIT-C]",
+      "sourceIds": ["DEMO-SRC-002"],
+      "evidence": [
+        {
+          "sourceId": "DEMO-SRC-002",
+          "passage": "Synthetic illustrative passage, not a quotation: the scenario baseline is labeled 2011, and the fixture includes no later comparison.",
+          "kind": "Synthetic fixture"
+        }
+      ],
+      "verdict": "POSSIBLY_OUTDATED",
+      "explanation": "The old fictional baseline may not represent the later year named in the claim; the prepared material cannot establish whether conditions changed.",
+      "limitations": [
+        "The scenario dates are invented and are not publication dates.",
+        "This label indicates a need for current evidence, not proof of change."
+      ]
+    },
+    {
+      "id": "claim-needs-review",
+      "text": "Condition A has the same effect across all populations.",
+      "page": 1,
+      "section": "Illustrative limitation",
+      "citationMarker": "[DEMO-CIT-B]",
+      "sourceIds": [],
+      "evidence": [
+        {
+          "sourceId": "DEMO-SRC-001",
+          "passage": "Synthetic illustrative passage, not a quotation: the prepared scenario provides no population or sample-size details.",
+          "kind": "Synthetic fixture"
+        }
+      ],
+      "verdict": "NEEDS_REVIEW",
+      "explanation": "The fixture lacks the population coverage and methods needed to assess a universal claim.",
+      "limitations": [
+        "A domain expert and fit-for-purpose evidence would be required.",
+        "The missing details do not establish either support or contradiction."
+      ]
+    }
+  ]
+}

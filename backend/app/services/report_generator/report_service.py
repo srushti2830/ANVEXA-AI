@@ -7,7 +7,7 @@ from io import BytesIO
 from uuid import UUID
 
 from fastapi import HTTPException
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import verify_resource_ownership
@@ -262,16 +262,15 @@ def build_document_report(
     sources = list(db.execute(
         select(ResearchSource)
         .where(ResearchSource.id.in_(source_ids))
-        .distinct()
     ).scalars().all()) if source_ids else []
-    evidence_count = len(list(db.execute(
-        select(EvidencePassage)
-        .where(
-            EvidencePassage.claim_id.in_(claim_ids)
-            if claim_ids
-            else EvidencePassage.source_id.in_(source_ids)
-        )
-    ).scalars().all())) if claim_ids or source_ids else 0
+    evidence_conditions = []
+    if claim_ids:
+        evidence_conditions.append(EvidencePassage.claim_id.in_(claim_ids))
+    if source_ids:
+        evidence_conditions.append(EvidencePassage.source_id.in_(source_ids))
+    evidence_count = db.scalar(
+        select(func.count(EvidencePassage.id)).where(or_(*evidence_conditions))
+    ) if evidence_conditions else 0
 
     human_reviewed = sum(
         1 for claim in claims
